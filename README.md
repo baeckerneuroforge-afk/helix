@@ -27,6 +27,7 @@ chat that answers with sources** — see
   - [Option B — local Postgres without Docker](#option-b--local-postgres-without-docker)
 - [The isolation test gate](#the-isolation-test-gate-pnpm-test)
 - [Knowledge base + RAG chat (Phase 2)](#knowledge-base--rag-chat-phase-2)
+- [Skill engine: Guardrail → Freigabe → Audit (Phase 3)](#skill-engine-guardrail--freigabe--audit-phase-3)
 - [✅ Checklist: adding a new tenant table](#-checklist-adding-a-new-tenant-table-the-most-important-section)
 - [Design decisions & trade-offs](#design-decisions--trade-offs)
 - [Project layout](#project-layout)
@@ -163,6 +164,9 @@ const items = await withTenant(orgId, (tx) =>
 | `documents`       | **yes**          | ENABLE+FORCE| knowledge-base documents (`source` ∈ upload/manual/transcript) |
 | `chunks`          | **yes**          | ENABLE+FORCE| embedded text chunks, `embedding vector(1024)` (pgvector) + HNSW index; composite FK `(document_id, org_id)` → same-tenant document only |
 | `chat_messages`   | **yes**          | ENABLE+FORCE| RAG chat history (`role` ∈ user/assistant)          |
+| `skill_runs`      | **yes**          | ENABLE+FORCE| one skill execution: `status` ∈ running/awaiting_approval/approved/rejected/completed/failed, `input`/`result` jsonb |
+| `skill_steps`     | **yes**          | ENABLE+FORCE| executed steps of a run; composite FK `(run_id, org_id)` → same-tenant run only |
+| `approvals`       | **yes**          | ENABLE+FORCE| human approval gate (`reason`, `decided_by`, `decided_at`); composite FK `(run_id, org_id)` |
 
 Every table except `organizations` has `org_id UUID NOT NULL` with a foreign key
 to `organizations(id)`. `organizations` is the tenant root, so its own RLS policy
@@ -389,6 +393,69 @@ uses the real ones.
 
 ---
 
+## Skill engine: Guardrail → Freigabe → Audit (Phase 3)
+
+Der Mechanismus, der ergane vom Chatbot zum Company Orchestrator macht:
+**ausführbare Skills** mit Leitplanke, menschlicher Freigabe und lückenlosem
+Audit. Erster Skill end-to-end: `beleg_kontieren`.
+
+### Skill-Format (`src/lib/skills/types.ts`)
+
+Ein Skill ist **Daten, kein Code-Sonderfall**:
+
+```ts
+{ key, title, handlesMoney: boolean, guardrail?: (input) => {triggered, reason?}, steps: StepDef[] }
+// StepDef: { name, acts?: boolean, run: (ctx) => Promise<detail> }
+```
+
+- `ctx` enthält den **tenant-gebundenen `tx`** (aus `withTenant`), das `input`
+  und den bisherigen State (Details der abgeschlossenen Steps).
+- **„liest nur" vs. „handelt":** `acts: false` (Default) = Step liest/leitet nur
+  ab. `acts: true` = Step hat (ggf. simulierte) Außenwirkung und wird durch die
+  Guardrail-Mechanik gated. `handlesMoney: true` markiert den ganzen Skill:
+  handelnde Steps ohne Guardrail **failen closed** (immer Freigabe nötig).
+
+### Ausführung (`src/lib/skills/engine.ts`)
+
+```
+startRun(orgId, key, input)   running ──(Steps, je 1 withTenant-Tx)──▶ completed
+                                 │  handelnder Step + Guardrail triggered
+                                 ▼
+                          awaiting_approval  ← NICHTS handelt, solange pausiert
+                           │            │
+                 approve() │            │ reject()
+                           ▼            ▼
+                        approved      rejected (handelnder Step lief NIE)
+                           └─(restliche Steps)──▶ completed
+```
+
+- Jeder Step ist **atomar**: Step-Effekt + `skill_steps`-Zeile + Audit-Eintrag
+  in einer Transaktion. Ohne Tenant-Kontext: null Wirkung (RLS, fail-closed).
+- Audit-Kette pro Run (append-only, `audit_log`): `skill.started` →
+  `skill.step_completed`… → ggf. `guardrail.triggered` →
+  `approval.approved|rejected` (actor_type **human**, `decided_by`) →
+  `skill.completed|failed`. Engine-Aktionen sind actor_type **agent**.
+- **Vier-Augen-Mechanik:** `approvals` trägt `reason`, `decided_by`,
+  `decided_at`; ein Run, dessen Guardrail griff, erreicht `completed` nur über
+  `approve()` durch einen Menschen.
+
+### Der erste Skill: `beleg_kontieren`
+
+`beleg_gelesen → konto_vorgeschlagen → buchung_vorbereitet → verbucht (acts)`.
+Kontovorschlag ist eine deterministische SKR03-Regeltabelle (offline; später
+durch RAG über die Wissensbasis ersetzbar, ohne die Engine anzufassen).
+Guardrail: **Betrag > 1.000 € → „Freigabe erforderlich"**. Der
+`verbucht`-Schritt ist ein simulierter Effekt (keine echte DATEV-Anbindung) —
+genug für den End-to-End-Beweis.
+
+Demo ohne Auth/HTTP: **`pnpm demo:skill`** zeigt 240 € (glatt durch), 1.240 €
+mit `approve()` (pausiert → completed) und 1.240 € mit `reject()` (rejected,
+nie verbucht) inkl. Audit-Kette. Tests: `tests/skill-isolation.test.ts` ist
+Teil des CI-Gates (Isolation inkl. zusammengesetzter FKs, Guardrail-Semantik,
+approve/reject, Vier-Augen-Sanity).
+
+---
+
 ## ✅ Checklist: adding a new tenant table (the most important section)
 
 Follow this **every time** so new tables are tenant-safe by construction. Do it
@@ -470,7 +537,8 @@ cross-tenant checks are designed to catch it.
 │  └─ seed.ts                          # two demo tenants (writes via withTenant)
 ├─ scripts/
 │  ├─ setup-local-db.sh                # no-Docker local DB helper (builds pgvector if missing)
-│  └─ demo-rag.ts                      # pnpm demo:rag — full RAG pipeline without HTTP/login
+│  ├─ demo-rag.ts                      # pnpm demo:rag — full RAG pipeline without HTTP/login
+│  └─ demo-skill.ts                    # pnpm demo:skill — guardrail → approval → audit end-to-end
 ├─ src/
 │  ├─ middleware.ts                    # Clerk: require user + active org
 │  ├─ lib/
@@ -481,10 +549,12 @@ cross-tenant checks are designed to catch it.
 │  │  ├─ org.ts                        # mirror Clerk org + membership
 │  │  ├─ auth-context.ts               # requireTenant() — session → tenant context
 │  │  ├─ ai/                           # provider abstraction: types + anthropic/voyage/fake adapters + factory
-│  │  └─ rag/                          # chunking, ingestDocument, retrieve, answerQuestion
+│  │  ├─ rag/                          # chunking, ingestDocument, retrieve, answerQuestion
+│  │  └─ skills/                       # skill engine: types, engine (guardrail→approval→audit), catalog/
 │  └─ app/                             # minimal UI: sign-in/up, select-org, dashboard, knowledge, chat
 ├─ tests/
 │  ├─ isolation.test.ts                # THE canonical isolation gate
-│  └─ rag-isolation.test.ts            # Phase-2 gate: new tables + vector retrieval + RAG flow
+│  ├─ rag-isolation.test.ts            # Phase-2 gate: new tables + vector retrieval + RAG flow
+│  └─ skill-isolation.test.ts          # Phase-3 gate: skill tables + guardrail/approval semantics
 └─ .github/workflows/ci.yml            # runs the gate on every push/PR
 ```
