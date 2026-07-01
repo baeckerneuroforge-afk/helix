@@ -47,6 +47,33 @@ enum ChatRole {
   @@map("chat_role")
 }
 
+enum SkillRunStatus {
+  running
+  awaiting_approval
+  approved
+  rejected
+  completed
+  failed
+
+  @@map("skill_run_status")
+}
+
+enum SkillStepStatus {
+  pending
+  done
+  failed
+
+  @@map("skill_step_status")
+}
+
+enum ApprovalStatus {
+  pending
+  approved
+  rejected
+
+  @@map("approval_status")
+}
+
 /// Tenant root. RLS ENABLE + FORCE with a SELF-ROW policy keyed on `id` (which
 /// is the tenant key), so a tenant can see/modify only its own org row.
 /// `id` is an internal UUID; `clerkOrgId` links it to the verified Clerk org.
@@ -62,8 +89,72 @@ model Organization {
   documents      Document[]
   chunks         Chunk[]
   chatMessages   ChatMessage[]
+  skillRuns      SkillRun[]
+  skillSteps     SkillStep[]
+  approvals      Approval[]
 
   @@map("organizations")
+}
+
+/// One execution of a declarative skill (tenant-scoped). RLS ENABLE + FORCE.
+/// The `[id, org_id]` unique constraint is the target of the composite FKs from
+/// skill_steps/approvals — a step or approval can never reference another
+/// tenant's run, structurally, on top of RLS.
+model SkillRun {
+  id        String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orgId     String         @map("org_id") @db.Uuid
+  skillKey  String         @map("skill_key")
+  status    SkillRunStatus @default(running)
+  input     Json
+  result    Json?
+  createdAt DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  steps        SkillStep[]
+  approvals    Approval[]
+
+  @@unique([id, orgId])
+  @@index([orgId])
+  @@map("skill_runs")
+}
+
+/// One executed step of a skill run (tenant-scoped). RLS ENABLE + FORCE.
+model SkillStep {
+  id        String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orgId     String          @map("org_id") @db.Uuid
+  runId     String          @map("run_id") @db.Uuid
+  idx       Int
+  name      String
+  status    SkillStepStatus @default(pending)
+  detail    Json?
+  createdAt DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  run          SkillRun     @relation(fields: [runId, orgId], references: [id, orgId], onDelete: Cascade)
+
+  @@unique([runId, idx])
+  @@index([orgId])
+  @@map("skill_steps")
+}
+
+/// Human approval gate for a guarded skill run (tenant-scoped). RLS ENABLE + FORCE.
+model Approval {
+  id        String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orgId     String         @map("org_id") @db.Uuid
+  runId     String         @map("run_id") @db.Uuid
+  reason    String
+  status    ApprovalStatus @default(pending)
+  decidedBy String?        @map("decided_by")
+  decidedAt DateTime?      @map("decided_at") @db.Timestamptz(6)
+  createdAt DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  run          SkillRun     @relation(fields: [runId, orgId], references: [id, orgId], onDelete: Cascade)
+
+  @@index([orgId])
+  @@index([runId])
+  @@map("approvals")
 }
 
 /// Tenant-scoped. RLS ENABLE + FORCE. org_id NOT NULL + FK.
