@@ -20,9 +20,26 @@ datasource db {
 enum Role {
   owner
   admin
+  lead
   member
 
   @@map("role")
+}
+
+enum ApprovalMode {
+  always
+  threshold
+  never
+
+  @@map("approval_mode")
+}
+
+enum DocumentVisibility {
+  open
+  restricted
+  confidential
+
+  @@map("document_visibility")
 }
 
 enum ActorType {
@@ -92,8 +109,46 @@ model Organization {
   skillRuns      SkillRun[]
   skillSteps     SkillStep[]
   approvals      Approval[]
+  approvalPolicies ApprovalPolicy[]
+  visibilityGrants VisibilityGrant[]
 
   @@map("organizations")
+}
+
+/// Per-skill approval policy (tenant-scoped). RLS ENABLE + FORCE.
+/// mode 'never' is only honored for skills without money effects — the engine
+/// overrides it for handlesMoney skills (audit 'policy.overridden_failsafe').
+model ApprovalPolicy {
+  id              String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orgId           String       @map("org_id") @db.Uuid
+  skillKey        String       @map("skill_key")
+  mode            ApprovalMode
+  thresholdAmount Decimal?     @map("threshold_amount") @db.Decimal(14, 2)
+  approverRole    Role?        @map("approver_role")
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, skillKey])
+  @@index([orgId])
+  @@map("approval_policies")
+}
+
+/// Which roles may see which document visibility level (tenant-scoped).
+/// RLS ENABLE + FORCE. 'open' needs no grant; no grant ⇒ not visible.
+model VisibilityGrant {
+  id        String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orgId     String             @map("org_id") @db.Uuid
+  level     DocumentVisibility
+  role      Role
+  createdAt DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, level, role])
+  @@index([orgId])
+  @@map("visibility_grants")
 }
 
 /// One execution of a declarative skill (tenant-scoped). RLS ENABLE + FORCE.
@@ -140,14 +195,17 @@ model SkillStep {
 
 /// Human approval gate for a guarded skill run (tenant-scoped). RLS ENABLE + FORCE.
 model Approval {
-  id        String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  orgId     String         @map("org_id") @db.Uuid
-  runId     String         @map("run_id") @db.Uuid
-  reason    String
-  status    ApprovalStatus @default(pending)
-  decidedBy String?        @map("decided_by")
-  decidedAt DateTime?      @map("decided_at") @db.Timestamptz(6)
-  createdAt DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  id           String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orgId        String         @map("org_id") @db.Uuid
+  runId        String         @map("run_id") @db.Uuid
+  reason       String
+  status       ApprovalStatus @default(pending)
+  /// Role required to decide (from the approval policy). NULL = pre-policy
+  /// behavior: any decided_by may decide (kept for runs without a policy).
+  requiredRole Role?          @map("required_role")
+  decidedBy    String?        @map("decided_by")
+  decidedAt    DateTime?      @map("decided_at") @db.Timestamptz(6)
+  createdAt    DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
 
   organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   run          SkillRun     @relation(fields: [runId, orgId], references: [id, orgId], onDelete: Cascade)
@@ -162,7 +220,7 @@ model Membership {
   id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   orgId     String   @map("org_id") @db.Uuid
   userId    String   @map("user_id")
-  role      Role
+  role      Role     @default(member)
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
@@ -191,11 +249,12 @@ model KnowledgeItem {
 /// composite FK from `chunks` (a chunk can never reference a foreign tenant's
 /// document — structurally, on top of RLS).
 model Document {
-  id        String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  orgId     String         @map("org_id") @db.Uuid
-  title     String
-  source    DocumentSource
-  createdAt DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  id         String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orgId      String             @map("org_id") @db.Uuid
+  title      String
+  source     DocumentSource
+  visibility DocumentVisibility @default(open)
+  createdAt  DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
 
   organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   chunks       Chunk[]
@@ -249,6 +308,7 @@ model AuditLog {
   actorType ActorType @map("actor_type")
   action    String
   target    String?
+  detail    Json?
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
