@@ -1,3 +1,4 @@
+import type { Prisma } from '@prisma/client';
 import type { Tx } from './tenant';
 
 export type ActorType = 'human' | 'agent';
@@ -17,6 +18,8 @@ export interface AuditEntry {
   action: string;
   /** Optional id/path of the affected object. */
   target?: string | null;
+  /** Optional structured payload, e.g. { old, new } for policy changes. */
+  detail?: Record<string, unknown> | null;
 }
 
 /**
@@ -32,6 +35,7 @@ export async function logAudit(tx: Tx, entry: AuditEntry) {
       actorType: entry.actorType,
       action: entry.action,
       target: entry.target ?? null,
+      detail: (entry.detail ?? undefined) as Prisma.InputJsonValue | undefined,
     },
   });
 }

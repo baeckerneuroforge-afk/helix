@@ -4,9 +4,18 @@
 // the current tenant; the WHERE c.org_id = … predicate repeats that explicitly
 // (defense-in-depth, and it lets the planner use the org_id index alongside the
 // HNSW scan). `<=>` is pgvector's cosine distance; similarity = 1 - distance.
+//
+// Disclosure filter (Phase 4): the asker's ROLE decides which documents are
+// even searchable — IN SQL, before any LLM ever sees a chunk. 'open' documents
+// are always visible; 'restricted'/'confidential' require a visibility_grant
+// for the role (visibility_grants is itself RLS'd, so only the tenant's own
+// grants apply). No role / unknown role / no grant ⇒ only 'open' (fail-closed).
+import type { Role } from '@prisma/client';
 import { getEmbeddingProvider, type EmbeddingProvider } from '../ai';
 import { withTenant } from '../tenant';
 import { assertDimensions, toVectorLiteral } from './ingest';
+
+const KNOWN_ROLES: ReadonlyArray<string> = ['owner', 'admin', 'lead', 'member'];
 
 export interface RetrievedChunk {
   chunkId: string;
@@ -24,6 +33,11 @@ export interface RetrieveInput {
   query: string;
   k?: number;
   embedder?: EmbeddingProvider;
+  /**
+   * Role of the asker (from the verified session / demo fixture). Omitted or
+   * unknown ⇒ only 'open' documents are searched (fail-closed).
+   */
+  role?: Role;
 }
 
 export async function retrieve(input: RetrieveInput): Promise<RetrievedChunk[]> {
@@ -38,6 +52,10 @@ export async function retrieve(input: RetrieveInput): Promise<RetrievedChunk[]> 
   const [queryVector] = await embedder.embed([query], 'query');
   assertDimensions([queryVector], embedder);
   const literal = toVectorLiteral(queryVector);
+
+  // Compared as text against g."role"::text — an unknown value simply matches
+  // no grant (fail-closed) instead of raising an enum-cast error.
+  const roleText = input.role && KNOWN_ROLES.includes(input.role) ? input.role : '';
 
   const rows = await withTenant(input.orgId, (tx) =>
     tx.$queryRaw<
@@ -61,6 +79,15 @@ export async function retrieve(input: RetrieveInput): Promise<RetrievedChunk[]> 
       JOIN "documents" d
         ON d."id" = c."document_id" AND d."org_id" = c."org_id"
       WHERE c."org_id" = ${input.orgId}::uuid
+        AND (
+          d."visibility" = 'open'
+          OR EXISTS (
+            SELECT 1 FROM "visibility_grants" g
+            WHERE g."org_id" = c."org_id"
+              AND g."level" = d."visibility"
+              AND g."role"::text = ${roleText}
+          )
+        )
       ORDER BY c."embedding" <=> ${literal}::vector
       LIMIT ${k}
     `,

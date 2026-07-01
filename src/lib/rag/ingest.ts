@@ -6,7 +6,7 @@
 // entry. The embedding column is pgvector's vector type, which Prisma cannot
 // express, so the chunk INSERT is raw SQL — org_id is still set explicitly and
 // RLS WITH CHECK enforces it, exactly like every other tenant write.
-import type { DocumentSource } from '@prisma/client';
+import type { DocumentSource, DocumentVisibility } from '@prisma/client';
 import { Prisma } from '@prisma/client';
 import { getEmbeddingProvider, EMBEDDING_DIMENSIONS, type EmbeddingProvider } from '../ai';
 import { logAudit } from '../audit';
@@ -42,6 +42,8 @@ export interface IngestDocumentInput {
   title: string;
   source: DocumentSource;
   text: string;
+  /** Disclosure level of the document (default 'open' — visible to every role). */
+  visibility?: DocumentVisibility;
   /** Injectable for tests/demo; defaults to the env-selected provider. */
   embedder?: EmbeddingProvider;
 }
@@ -71,7 +73,12 @@ export async function ingestDocument(input: IngestDocumentInput): Promise<Ingest
 
   return withTenant(input.orgId, async (tx) => {
     const document = await tx.document.create({
-      data: { orgId: input.orgId, title, source: input.source },
+      data: {
+        orgId: input.orgId,
+        title,
+        source: input.source,
+        visibility: input.visibility ?? 'open',
+      },
     });
     // Belt-and-suspenders: WITH CHECK already guaranteed this.
     if (document.orgId !== input.orgId) {

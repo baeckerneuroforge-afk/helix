@@ -16,8 +16,9 @@ export async function askQuestion(formData: FormData) {
   if (!question) throw new Error('Question is required.');
   if (question.length > 2000) throw new Error('Question too long (max 2000 characters).');
 
-  const { orgId, userId } = await requireTenant();
-  await answerQuestion({ orgId, actorId: userId, question });
+  // The asker's role gates which knowledge is retrievable (disclosure policy).
+  const { orgId, userId, role } = await requireTenant();
+  await answerQuestion({ orgId, actorId: userId, question, role });
 
   revalidatePath('/dashboard/chat');
 }

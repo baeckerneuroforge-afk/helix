@@ -58,5 +58,11 @@ export interface SkillDef {
   handlesMoney: boolean;
   /** Evaluated BEFORE the first acting step. Pure function of the input. */
   guardrail?: (input: SkillJson) => GuardrailResult;
+  /**
+   * Extracts the monetary amount (EUR) from the input — used by 'threshold'
+   * approval policies. Return null when the input carries no valid amount;
+   * threshold policies then fail closed (approval required).
+   */
+  amountOf?: (input: SkillJson) => number | null;
   steps: StepDef[];
 }

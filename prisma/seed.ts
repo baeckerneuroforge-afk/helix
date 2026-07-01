@@ -38,6 +38,17 @@ async function seedOrg(id: string, clerkOrgId: string, name: string) {
       action: 'knowledge_item.create',
       target: item.id,
     });
+
+    // Sensible disclosure defaults (Phase 4): restricted → lead+admin,
+    // confidential → admin. No grant for a role ⇒ that role sees only 'open'.
+    await tx.visibilityGrant.createMany({
+      data: [
+        { orgId: id, level: 'restricted', role: 'lead' },
+        { orgId: id, level: 'restricted', role: 'admin' },
+        { orgId: id, level: 'confidential', role: 'admin' },
+      ],
+      skipDuplicates: true, // idempotent re-seed
+    });
   });
 }
 
