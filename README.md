@@ -330,3 +330,4 @@ cross-tenant checks are designed to catch it.
 ├─ tests/isolation.test.ts             # THE 5-test isolation gate
 └─ .github/workflows/ci.yml            # runs the gate on every push/PR
 ```
+# ergane
