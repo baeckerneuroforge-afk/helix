@@ -19,6 +19,7 @@
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
     "prisma:generate": "prisma generate",
+    "demo:rag": "tsx scripts/demo-rag.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "postinstall": "prisma generate"
