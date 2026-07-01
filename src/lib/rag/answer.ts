@@ -8,6 +8,7 @@
 // Persistence: the user question + assistant answer land in chat_messages and
 // the audit entry in audit_log, all in ONE withTenant() transaction after the
 // answer exists (an LLM call must never run inside an open DB transaction).
+import type { Role } from '@prisma/client';
 import {
   getChatProvider,
   getEmbeddingProvider,
@@ -50,6 +51,13 @@ export interface AnswerQuestionInput {
   k?: number;
   embedder?: EmbeddingProvider;
   chat?: ChatProvider;
+  /**
+   * Role of the asker — passed through to retrieve()'s disclosure filter.
+   * Knowledge invisible to the role is simply never retrieved, so the honest
+   * "no verified knowledge" answer applies WITHOUT revealing that hidden
+   * knowledge exists. Omitted ⇒ only 'open' documents (fail-closed).
+   */
+  role?: Role;
 }
 
 export interface AnswerQuestionResult {
@@ -88,6 +96,7 @@ export async function answerQuestion(input: AnswerQuestionInput): Promise<Answer
     query: question,
     k: input.k,
     embedder,
+    role: input.role,
   });
   const relevant = retrieved.filter((c) => c.similarity >= embedder.relevanceThreshold);
 

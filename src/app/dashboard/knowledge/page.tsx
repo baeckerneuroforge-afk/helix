@@ -45,6 +45,12 @@ export default async function KnowledgePage() {
           <textarea id="text" name="text" rows={6} placeholder="Paste the knowledge here…" />
           <label htmlFor="file">…or upload a .txt file (read server-side)</label>
           <input id="file" name="file" type="file" accept=".txt,text/plain" />
+          <label htmlFor="visibility">Visibility</label>
+          <select id="visibility" name="visibility" defaultValue="open">
+            <option value="open">open — every role</option>
+            <option value="restricted">restricted — granted roles only</option>
+            <option value="confidential">confidential — granted roles only</option>
+          </select>
           <button type="submit">Ingest</button>
         </form>
       </section>
@@ -57,7 +63,18 @@ export default async function KnowledgePage() {
           <ul className="items">
             {documents.map((doc) => (
               <li key={doc.id}>
-                <strong>{doc.title}</strong>
+                <strong>{doc.title}</strong>{' '}
+                <span
+                  className="muted"
+                  style={{
+                    border: '1px solid var(--border)',
+                    borderRadius: '999px',
+                    padding: '0 0.5rem',
+                    fontSize: '0.75rem',
+                  }}
+                >
+                  {doc.visibility}
+                </span>
                 <div className="muted">
                   {doc.source} · {doc._count.chunks} chunk{doc._count.chunks === 1 ? '' : 's'} ·{' '}
                   {doc.createdAt.toISOString().slice(0, 10)}

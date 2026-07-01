@@ -53,6 +53,10 @@ export const belegKontieren: SkillDef = {
       ? { triggered: true, reason: GUARDRAIL_REASON }
       : { triggered: false };
   },
+  amountOf: (input) =>
+    typeof input.betragEur === 'number' && Number.isFinite(input.betragEur)
+      ? input.betragEur
+      : null,
   steps: [
     {
       name: 'beleg_gelesen',

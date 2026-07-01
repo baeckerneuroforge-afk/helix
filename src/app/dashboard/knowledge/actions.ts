@@ -1,10 +1,13 @@
 'use server';
 
+import type { DocumentVisibility } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
 import { requireTenant } from '@/lib/auth-context';
 import { ingestDocument } from '@/lib/rag';
 
 const MAX_UPLOAD_BYTES = 1_000_000; // 1 MB of plain text is plenty for now.
+
+const VISIBILITIES: DocumentVisibility[] = ['open', 'restricted', 'confidential'];
 
 /**
  * Ingest a document into the tenant's knowledge base.
@@ -37,8 +40,13 @@ export async function addDocument(formData: FormData) {
 
   if (!text) throw new Error('Provide text or upload a .txt file.');
 
+  // Untrusted form value → validate against the enum; anything else fails.
+  const rawVisibility = String(formData.get('visibility') ?? 'open');
+  const visibility = VISIBILITIES.find((v) => v === rawVisibility);
+  if (!visibility) throw new Error('Invalid visibility.');
+
   const { orgId, userId } = await requireTenant();
-  await ingestDocument({ orgId, actorId: userId, title, source, text });
+  await ingestDocument({ orgId, actorId: userId, title, source, text, visibility });
 
   revalidatePath('/dashboard/knowledge');
 }
