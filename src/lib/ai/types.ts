@@ -24,6 +24,13 @@ export interface EmbeddingProvider {
   readonly name: string;
   /** Must equal EMBEDDING_DIMENSIONS — asserted by the RAG layer. */
   readonly dimensions: number;
+  /**
+   * Cosine-similarity floor below which a retrieved chunk does NOT count as
+   * relevant (→ the chat answers "no verified knowledge" instead of guessing).
+   * Similarity distributions differ per embedding model, so the threshold
+   * belongs to the provider, not to the RAG layer.
+   */
+  readonly relevanceThreshold: number;
   /** Embed `texts` in order; returns one vector per input text. */
   embed(texts: string[], inputType: EmbeddingInputType): Promise<number[][]>;
 }

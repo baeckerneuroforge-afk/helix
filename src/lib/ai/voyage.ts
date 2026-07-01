@@ -21,6 +21,10 @@ interface VoyageResponse {
 export class VoyageEmbeddingProvider implements EmbeddingProvider {
   readonly name = 'voyage';
   readonly dimensions = EMBEDDING_DIMENSIONS;
+  // voyage-3.5 cosine similarities: related passages typically score ≥ ~0.5,
+  // unrelated ones ~0.2–0.4. Below this floor we prefer the honest
+  // "no verified knowledge" answer over a hallucinated one.
+  readonly relevanceThreshold = 0.45;
   private readonly apiKey: string;
   private readonly model: string;
 
