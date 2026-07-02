@@ -3,6 +3,7 @@ import { requireTenant } from '@/lib/auth-context';
 import { getApprovalPolicy } from '@/lib/policies';
 import { listSkills } from '@/lib/skills';
 import { GUARDRAIL_LIMIT_EUR } from '@/lib/skills/catalog/beleg_kontieren';
+import { RECHNUNG_GUARDRAIL_LIMIT_EUR } from '@/lib/skills/catalog/rechnung_erstellen';
 import type { SkillDef } from '@/lib/skills';
 import { formatEuro } from '../ui';
 import { startSkillRun } from './actions';
@@ -24,6 +25,12 @@ function guardrailInfo(skill: SkillDef, policy: ApprovalPolicy | null): string {
   }
   if (skill.key === 'beleg_kontieren') {
     return `Freigabe ab ${formatEuro(GUARDRAIL_LIMIT_EUR)} (Guardrail)`;
+  }
+  if (skill.key === 'rechnung_erstellen') {
+    return `Freigabe ab ${formatEuro(RECHNUNG_GUARDRAIL_LIMIT_EUR)} Rechnungssumme (Guardrail)`;
+  }
+  if (skill.key === 'angebot_erstellen') {
+    return 'Freigabe: immer — externe Kommunikation, unabhängig vom Betrag (Guardrail)';
   }
   if (skill.guardrail) return 'Guardrail aktiv — Freigabe bei Auslösung';
   return skill.handlesMoney ? 'Freigabe: immer erforderlich' : 'Keine Freigabe nötig';
@@ -80,6 +87,61 @@ export default async function SkillsPage() {
                     />
                     <label htmlFor={`beleg-${skill.key}`}>Belegnummer (optional)</label>
                     <input id={`beleg-${skill.key}`} name="belegNummer" placeholder="B-2026-…" />
+                  </>
+                ) : skill.key === 'wissen_zusammenfassen' ? (
+                  <>
+                    <label htmlFor={`frage-${skill.key}`}>Frage / Thema</label>
+                    <input
+                      id={`frage-${skill.key}`}
+                      name="frage"
+                      placeholder="z. B. Wie viele Urlaubstage gibt es?"
+                      required
+                    />
+                  </>
+                ) : skill.key === 'angebot_erstellen' ? (
+                  <>
+                    <label htmlFor={`kunde-${skill.key}`}>Kunde</label>
+                    <input
+                      id={`kunde-${skill.key}`}
+                      name="kunde"
+                      placeholder="z. B. Hanse Logistik GmbH"
+                      required
+                    />
+                    <label htmlFor={`leistung-${skill.key}`}>Leistung</label>
+                    <input
+                      id={`leistung-${skill.key}`}
+                      name="leistung"
+                      placeholder="z. B. Projektunterstützung Q3"
+                      required
+                    />
+                    <label htmlFor={`betrag-${skill.key}`}>Betrag (EUR)</label>
+                    <input
+                      id={`betrag-${skill.key}`}
+                      name="betragEur"
+                      type="number"
+                      step="0.01"
+                      min="0.01"
+                      placeholder="z. B. 4800,00"
+                      required
+                    />
+                  </>
+                ) : skill.key === 'rechnung_erstellen' ? (
+                  <>
+                    <label htmlFor={`kunde-${skill.key}`}>Kunde</label>
+                    <input
+                      id={`kunde-${skill.key}`}
+                      name="kunde"
+                      placeholder="z. B. Möbelwerk Nord GmbH"
+                      required
+                    />
+                    <label htmlFor={`pos-${skill.key}`}>Positionen (eine pro Zeile: Bezeichnung; Betrag)</label>
+                    <textarea
+                      id={`pos-${skill.key}`}
+                      name="positionen"
+                      rows={3}
+                      placeholder={'Beratung März; 950\nWorkshoptag; 480'}
+                      required
+                    />
                   </>
                 ) : (
                   <>

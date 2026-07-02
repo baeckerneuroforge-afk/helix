@@ -488,6 +488,36 @@ nie verbucht) inkl. Audit-Kette. Tests: `tests/skill-isolation.test.ts` ist
 Teil des CI-Gates (Isolation inkl. zusammengesetzter FKs, Guardrail-Semantik,
 approve/reject, Vier-Augen-Sanity).
 
+### Skill-Katalog: ein Motor, vier Skills
+
+Jeder Skill ist reine Daten im `SkillDef`-Format — die Engine kennt keine
+Sonderpfade. Der Katalog (`src/lib/skills/catalog/`) zeigt die drei
+Freigabe-Archetypen:
+
+| Skill | Typ | Freigabe (ohne Policy) | Warum |
+| ----- | --- | ---------------------- | ----- |
+| `wissen_zusammenfassen` | **liest nur** (alle Steps `acts:false`, `handlesMoney:false`) | **nie** — läuft immer direkt bis `completed` | keine Wirkung nach außen |
+| `angebot_erstellen` | handelt (Versand simuliert) | **immer**, unabhängig vom Betrag | Guardrail triggert auf **externe Kommunikation** — ein Angebot verlässt das Unternehmen; `handlesMoney:false` |
+| `rechnung_erstellen` | handelt, Geld (`handlesMoney:true`) | **ab Rechnungssumme > 1.000 €** | Betrag-Guardrail wie `beleg_kontieren`; `amountOf` liefert die Summe für Threshold-Policies |
+| `beleg_kontieren` | handelt, Geld (`handlesMoney:true`) | **ab Betrag > 1.000 €** | s. o. — der erste Skill |
+
+**Wissens-Retrieval in Steps** (`catalog/wissen.ts`): Skills, die Wissen
+brauchen (`wissen_zusammenfassen`, `angebot_erstellen`), fragen die
+Wissensbasis **rollenbewusst** ab — mit der Rolle des Auslösers, die die
+UI-Action serverseitig aus der verifizierten Session in den Input spiegelt
+(nie vom Client). Es gilt exakt der Disclosure-Filter von `retrieve()`
+(fail-closed: keine/unbekannte Rolle ⇒ nur `open`; kein sichtbares Wissen ⇒
+die ehrliche Kein-Wissen-Antwort ohne Leak, Quellen im kanonischen
+`Quellen: …`-Format). Technische Fußnote: Steps laufen INNERHALB der
+withTenant-Transaktion der Engine, `retrieve()` öffnet eine eigene —
+verschachtelt blockiert das den Connection-Pool. `holeWissen()` führt deshalb
+dieselbe Abfrage (identisches WHERE-Prädikat, dokumentiert als Spiegel) auf
+der Step-Transaktion aus.
+
+Tests: `tests/skill-catalog.test.ts` (read-only pausiert nie + Disclosure ohne
+Leak; Angebot pausiert immer, auch bei 1 €; Rechnung unter/über der Schwelle;
+widersprüchliche Summe ⇒ `failed` vor jedem Effekt) ist Teil des CI-Gates.
+
 ---
 
 ## Governance-Policies (Phase 4)
@@ -718,6 +748,7 @@ cross-tenant checks are designed to catch it.
 │  ├─ skill-isolation.test.ts          # Phase-3 gate: skill tables + guardrail/approval semantics
 │  ├─ policy.test.ts                   # Phase-4 gate: approval policies, disclosure, role gates, fail-closed
 │  ├─ ingest.test.ts                   # Phase-5 gate: format extraction, fail-closed rejects, paragraph chunking
-│  └─ settings.test.ts                 # settings gate: setMembershipRole (admin-only, tenant-scoped, last-admin guard, audit)
+│  ├─ settings.test.ts                 # settings gate: setMembershipRole (admin-only, tenant-scoped, last-admin guard, audit)
+│  └─ skill-catalog.test.ts            # catalog gate: read-only nie Freigabe + Disclosure, Angebot immer Freigabe, Rechnung-Schwelle
 └─ .github/workflows/ci.yml            # runs the gate on every push/PR
 ```
