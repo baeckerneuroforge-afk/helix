@@ -20,4 +20,10 @@ export async function register(): Promise<void> {
       // Not in a request scope (e.g. warmup) — plain fire-and-forget is fine.
     }
   });
+
+  // Error-tracker attachment point (Phase 12): when a tracker is introduced,
+  // wire it HERE — e.g. with Sentry:
+  //   const { setErrorReporter } = await import('./lib/log');
+  //   setErrorReporter((err) => Sentry.captureException(err));
+  // Until then, logError() emits structured JSON lines only.
 }

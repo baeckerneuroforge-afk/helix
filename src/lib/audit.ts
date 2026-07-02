@@ -1,5 +1,5 @@
-import type { Prisma } from '@prisma/client';
-import type { Tx } from './tenant';
+import type { AuditLog, Prisma } from '@prisma/client';
+import { withTenant, type Tx } from './tenant';
 
 export type ActorType = 'human' | 'agent';
 
@@ -37,5 +37,52 @@ export async function logAudit(tx: Tx, entry: AuditEntry) {
       target: entry.target ?? null,
       detail: (entry.detail ?? undefined) as Prisma.InputJsonValue | undefined,
     },
+  });
+}
+
+export interface AuditQuery {
+  /** Filter: action prefix(es), e.g. ['skill.', 'approval.']. */
+  actionPrefixes?: string[];
+  /** Filter: exact actor id. */
+  actorId?: string;
+  /** 1-based page. */
+  page?: number;
+  pageSize?: number;
+}
+
+export interface AuditPage {
+  entries: AuditLog[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+/**
+ * Paginated, filtered read of the tenant's audit trail (newest first) — used
+ * by the audit UI. Runs entirely inside withTenant, so filters can never
+ * widen the scope beyond the caller's tenant.
+ */
+export async function queryAuditLog(orgId: string, query: AuditQuery = {}): Promise<AuditPage> {
+  const page = Math.max(1, Math.trunc(query.page ?? 1));
+  const pageSize = Math.min(200, Math.max(1, Math.trunc(query.pageSize ?? 50)));
+
+  const where: Prisma.AuditLogWhereInput = {
+    ...(query.actionPrefixes && query.actionPrefixes.length > 0
+      ? { OR: query.actionPrefixes.map((p) => ({ action: { startsWith: p } })) }
+      : {}),
+    ...(query.actorId ? { actorId: query.actorId } : {}),
+  };
+
+  return withTenant(orgId, async (tx) => {
+    // Sequential on purpose: concurrent queries on one interactive-transaction
+    // client are unsupported (single pinned connection).
+    const entries = await tx.auditLog.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    });
+    const total = await tx.auditLog.count({ where });
+    return { entries, total, page, pageSize };
   });
 }
