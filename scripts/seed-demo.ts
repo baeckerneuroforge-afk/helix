@@ -2,8 +2,10 @@
 // `pnpm seed:demo` — Demo-Daten für Screenshots: die "Nordwind GmbH".
 //
 // Legt an: 4 Wissens-Dokumente (verschiedene Sichtbarkeiten), 2 Chat-Verläufe,
-// 5 skill_runs in verschiedenen Zuständen (completed, awaiting_approval mit
-// 1.240 €, rejected) samt passenden approvals — alles über die BESTEHENDEN
+// 9 skill_runs in verschiedenen Zuständen (completed, awaiting_approval mit
+// 1.240 €, rejected, plus je ein Run pro Katalog-Skill: read-only completed,
+// Angebot awaiting wegen externer Wirkung, Rechnung approved + awaiting)
+// samt passenden approvals — alles über die BESTEHENDEN
 // Funktionen (ingestDocument, answerQuestion, startRun, approve, reject),
 // nicht per Raw-Insert, damit die Audit-Kette echt ist.
 //
@@ -155,7 +157,7 @@ async function main() {
     console.log(`— Chat: "${question}" → ${sources.length ? `Quellen: ${sources.join(', ')}` : 'kein Wissen'}`);
   }
 
-  // 5 Skill-Runs in verschiedenen Zuständen — komplett über die Engine.
+  // 5 beleg_kontieren-Runs in verschiedenen Zuständen — komplett über die Engine.
   const r1 = await startRun(DEMO_ORG, 'beleg_kontieren', {
     beschreibung: 'Bahnticket München–Hamburg, Kundentermin',
     betragEur: 187.5,
@@ -191,6 +193,52 @@ async function main() {
   const r5Done = await reject(DEMO_ORG, r5.runId, LEAD);
 
   console.log(`— Runs: ${r1.status}, ${r2.status}, ${r3Done.status} (nach approve), ${r4.status} (1.240 €), ${r5Done.status} (nach reject)`);
+
+  // Katalog-Skills (je ein Beispiel-Run pro neuem Skill, über die Engine):
+  // read-only läuft direkt durch; Angebot pausiert wegen externer Wirkung;
+  // Rechnung einmal freigegeben, einmal wartend. `rolle` ist die Rolle des
+  // Auslösers (Disclosure-Filter des Wissens-Retrievals in den Steps).
+  const r6 = await startRun(DEMO_ORG, 'wissen_zusammenfassen', {
+    frage: 'Wie viele Urlaubstage haben Mitarbeitende pro Kalenderjahr?',
+    rolle: 'member',
+  });
+  if (r6.status !== 'completed') {
+    throw new Error(`seed-demo: wissen_zusammenfassen erwartet completed, erhalten ${r6.status}`);
+  }
+
+  const r7 = await startRun(DEMO_ORG, 'angebot_erstellen', {
+    kunde: 'Hanse Logistik GmbH',
+    leistung: 'Projektunterstützung Rahmenvertrag Q3',
+    betragEur: 4800,
+    rolle: 'lead',
+  });
+  if (r7.status !== 'awaiting_approval') {
+    throw new Error(`seed-demo: angebot_erstellen erwartet awaiting_approval, erhalten ${r7.status}`);
+  }
+
+  const r8 = await startRun(DEMO_ORG, 'rechnung_erstellen', {
+    kunde: 'Möbelwerk Nord GmbH',
+    positionen: [
+      { bezeichnung: 'Beratungsleistung März', betragEur: 1800 },
+      { bezeichnung: 'Workshoptag vor Ort', betragEur: 950 },
+    ],
+    rolle: 'lead',
+  });
+  if (r8.status !== 'awaiting_approval') {
+    throw new Error(`seed-demo: rechnung_erstellen erwartet awaiting_approval, erhalten ${r8.status}`);
+  }
+  const r8Done = await approve(DEMO_ORG, r8.runId, LEAD);
+
+  const r9 = await startRun(DEMO_ORG, 'rechnung_erstellen', {
+    kunde: 'Baltic Trading UG',
+    positionen: [{ bezeichnung: 'Wartungsvertrag Jahrespauschale', betragEur: 2400 }],
+    rolle: 'lead',
+  });
+
+  console.log(
+    `— Katalog-Runs: wissen_zusammenfassen ${r6.status}, angebot_erstellen ${r7.status} (externe Wirkung), ` +
+      `rechnung_erstellen ${r8Done.status} (nach approve) + ${r9.status} (2.400 €)`,
+  );
 
   const { runs, approvals, audits } = await withTenant(DEMO_ORG, async (tx) => ({
     runs: await tx.skillRun.count(),

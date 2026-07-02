@@ -2,10 +2,16 @@
 // Adding a skill = adding a SkillDef here; the engine, tables and audit
 // mechanics are shared.
 import type { SkillDef } from '../types';
+import { angebotErstellen } from './angebot_erstellen';
 import { belegKontieren } from './beleg_kontieren';
+import { rechnungErstellen } from './rechnung_erstellen';
+import { wissenZusammenfassen } from './wissen_zusammenfassen';
 
 const SKILLS: Record<string, SkillDef> = {
   [belegKontieren.key]: belegKontieren,
+  [wissenZusammenfassen.key]: wissenZusammenfassen,
+  [angebotErstellen.key]: angebotErstellen,
+  [rechnungErstellen.key]: rechnungErstellen,
 };
 
 export function getSkill(key: string): SkillDef {
