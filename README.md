@@ -38,6 +38,7 @@ chat that answers with sources** — see
 - [Slack produktionsreif (Phase 9)](#slack-produktionsreif-phase-9)
 - [RAG v2: Multi-Turn & Dokument-Versionen (Phase 10)](#rag-v2-multi-turn--dokument-versionen-phase-10)
 - [Echte Skill-Effekte (Phase 11)](#echte-skill-effekte-phase-11)
+- [Betrieb: Logging, Audit-UI, Deployment (Phase 12)](#betrieb-logging-audit-ui-deployment-phase-12)
 - [✅ Checklist: adding a new tenant table](#-checklist-adding-a-new-tenant-table-the-most-important-section)
 - [Design decisions & trade-offs](#design-decisions--trade-offs)
 - [Project layout](#project-layout)
@@ -976,6 +977,54 @@ Tests: `tests/skill-effects.test.ts`.
 
 ---
 
+## Betrieb: Logging, Audit-UI, Deployment (Phase 12)
+
+**Strukturiertes Logging** (`src/lib/log.ts`): eine JSON-Zeile pro Ereignis,
+niemals Inhalte (Dokumente/Fragen/Antworten — dafür ist das audit_log da),
+Secrets werden defensiv maskiert (nach Schlüsselnamen UND nach Werte-Form:
+`xox…`, `whsec_…`, `Bearer …`). `setErrorReporter()` ist der dokumentierte
+Anschlusspunkt für Sentry & Co. (Wiring in `src/instrumentation.ts`); ein
+kaputter Reporter kann den Aufrufer nie brechen. `deferWork()` loggt darüber.
+
+**Audit-UI**: Kategorie-Filter (jetzt inkl. `slack` und `lifecycle`),
+Akteur-Filter und Pagination — alles über `queryAuditLog()` (`src/lib/audit.ts`),
+das strikt in `withTenant` läuft: kein Filter kann den Tenant-Scope weiten.
+
+**Security-Header** (`next.config.mjs`): `X-Content-Type-Options`,
+`X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy` auf jeder
+Antwort. Bewusst noch keine CSP: Nexts Inline-Runtime braucht Nonces/Hashes —
+lieber später korrekt per Middleware als jetzt eine laxe.
+
+### Deployment (Vercel-Pfad)
+
+1. **Projekt verbinden**, Framework Next.js — Build ist Standard
+   (`next build`); `src/instrumentation.ts` läuft automatisch und verdrahtet
+   das `after()`-Keep-alive für die deferte Slack-Arbeit.
+2. **Env-Variablen** (Production + Preview): `DATABASE_URL` (app_user!),
+   `DIRECT_DATABASE_URL` (Owner, NUR für Migrationen), Clerk-Keys,
+   `CLERK_WEBHOOK_SECRET`, `SLACK_SIGNING_SECRET` (+ `SLACK_BOT_TOKEN` oder
+   OAuth-Trio `SLACK_CLIENT_ID`/`SLACK_CLIENT_SECRET`/`SLACK_TOKEN_ENC_KEY`),
+   optional `ANTHROPIC_API_KEY`/`VOYAGE_API_KEY`, `RESEND_API_KEY` +
+   `EFFECTS_EMAIL_FROM`. Ohne AI-/Effekt-Keys wirft Produktion (fail-closed) —
+   nichts antwortet heimlich aus Fakes.
+3. **Migrationen als Release-Schritt**, nie im Request-Pfad:
+   `pnpm db:migrate` (läuft als Owner über `DIRECT_DATABASE_URL`) — z. B. als
+   CI-Step vor dem Promote. Die App selbst verbindet nur als `app_user`.
+4. **Pooling**: hinter PgBouncer (Transaction-Mode) `&pgbouncer=true` an die
+   `DATABASE_URL` — `withTenant` ist unter Transaction-Pooling korrekt (siehe
+   oben), das Flag betrifft nur Prepared Statements.
+5. **Webhook-URLs eintragen**: Slack (drei URLs + OAuth-Redirect, siehe
+   „Slack lokal testen") und Clerk (`/api/clerk/webhooks`).
+6. **Backups**: beim Managed-Postgres-Anbieter aktivieren (PITR empfohlen);
+   der In-App-Export (Settings → „Daten & Löschung") ist ein
+   Betroffenenrechte-Werkzeug, KEIN Backup.
+7. **Rate-Limits**: der In-App-Limiter ist per Instanz — für harte Garantien
+   WAF-/Plattform-Rate-Rules auf `/api/slack/*` und `/api/clerk/*` legen.
+
+Tests: `tests/ops.test.ts`.
+
+---
+
 ## ✅ Checklist: adding a new tenant table (the most important section)
 
 Follow this **every time** so new tables are tenant-safe by construction. Do it
@@ -1087,6 +1136,7 @@ cross-tenant checks are designed to catch it.
 │  ├─ skill-isolation.test.ts          # Phase-3 gate: skill tables + guardrail/approval semantics
 │  ├─ policy.test.ts                   # Phase-4 gate: approval policies, disclosure, role gates, fail-closed
 │  ├─ ingest.test.ts                   # Phase-5 gate: format extraction, fail-closed rejects, paragraph chunking
+│  ├─ ops.test.ts                     # Phase-12 gate: Logger-Maskierung, queryAuditLog tenant-gebunden
 │  ├─ settings.test.ts                 # settings gate: setMembershipRole (admin-only, tenant-scoped, last-admin guard, audit)
 │  ├─ skill-catalog.test.ts            # catalog gate: read-only nie Freigabe + Disclosure, Angebot immer Freigabe, Rechnung-Schwelle
 │  ├─ clerk-sync.test.ts              # Phase-8 gate: Svix-Signatur, Offboarding kaskadiert Slack-Link, role_source, user.deleted

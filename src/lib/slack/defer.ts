@@ -26,6 +26,8 @@
 // Tests/demo: drainDeferredWork() awaits everything currently deferred, making
 // the "200 first, work afterwards" order observable and deterministic.
 
+import { logError } from '../log';
+
 type KeepAlive = (pending: Promise<void>) => void;
 
 let keepAlive: KeepAlive = () => {};
@@ -52,12 +54,12 @@ export function deferWork(task: () => Promise<void>, opts: DeferWorkOptions = {}
     try {
       await task();
     } catch (err) {
-      console.error(`[slack] deferred work${opts.label ? ` (${opts.label})` : ''} failed:`, err);
+      logError('slack deferred work failed', err, { label: opts.label ?? null });
       if (opts.onFailure) {
         try {
           await opts.onFailure(err);
         } catch (notifyErr) {
-          console.error('[slack] failure notification also failed:', notifyErr);
+          logError('slack failure notification also failed', notifyErr, { label: opts.label ?? null });
         }
       }
     }
