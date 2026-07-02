@@ -1,6 +1,12 @@
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
+  resolve: {
+    // Mirror tsconfig's "@/*" → "src/*" so tests can exercise route handlers
+    // (which use the app-style alias) directly.
+    alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
+  },
   test: {
     environment: 'node',
     // Load env vars (DATABASE_URL → app_user, DIRECT_DATABASE_URL → owner) before

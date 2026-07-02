@@ -13,6 +13,8 @@ const isPublicRoute = createRouteMatcher([
   '/sign-up(.*)',
   '/api/slack(.*)',
   '/api/clerk(.*)',
+  // Uptime checks — returns only up/down, no tenant data (Phase 13).
+  '/api/health',
 ]);
 const isOrgSelectRoute = createRouteMatcher(['/select-org(.*)']);
 

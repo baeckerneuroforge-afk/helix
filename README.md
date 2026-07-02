@@ -1023,6 +1023,33 @@ lieber später korrekt per Middleware als jetzt eine laxe.
 
 Tests: `tests/ops.test.ts`.
 
+### Go-Live-Checkliste (Phase 13)
+
+Der Deploy-Workflow (`.github/workflows/deploy.yml`) läuft bei jedem Push auf
+`main`: Gate → `prisma migrate deploy` (Owner, NUR im CI) → Vercel-Promote →
+Smoke-Check auf `/api/health`. Bis die Secrets konfiguriert sind, überspringt
+er sich selbst mit einer Notice — nichts deployt versehentlich.
+
+Einmalige manuelle Schritte (nur mit Vercel-/Slack-/Clerk-Zugang möglich):
+
+- [ ] Managed Postgres mit pgvector provisionieren; `app_user` nach dem Muster
+      aus `docker/postgres/init/01-app-user.sql` anlegen (NOSUPERUSER,
+      NOBYPASSRLS, nie Owner); PITR-Backups aktivieren.
+- [ ] Vercel-Projekt verbinden (`vercel link`) und die Runtime-Env setzen
+      (Matrix oben — `DATABASE_URL` zeigt auf `app_user`;
+      `DIRECT_DATABASE_URL` gehört NICHT in die Vercel-Env).
+- [ ] Repo-Secrets setzen: `PROD_DIRECT_DATABASE_URL`, `VERCEL_TOKEN`,
+      `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`; Repo-Variable `PROD_HEALTH_URL`
+      (z. B. `https://<host>/api/health`).
+- [ ] Clerk: Webhook-Endpoint `https://<host>/api/clerk/webhooks` anlegen
+      (Events: `organizationMembership.*`, `user.deleted`,
+      `organization.deleted`), Signing Secret → `CLERK_WEBHOOK_SECRET`.
+- [ ] Slack-App: die drei Request-URLs + OAuth-Redirect eintragen (siehe
+      „Slack lokal testen"), Secrets in die Vercel-Env.
+- [ ] Smoke-Test: Login → Org → Dokument → Frage mit Quelle; Slack
+      `url_verification` grün; Clerk-Test-Event kommt an; `/api/health` 200.
+
+
 ---
 
 ## ✅ Checklist: adding a new tenant table (the most important section)
