@@ -1,0 +1,92 @@
+# Production deploy (Phase 13): gate → migrations → Vercel promote.
+#
+# SAFE-BY-DEFAULT: every deploy step is guarded — until the four secrets below
+# are configured in the repo, this workflow runs, reports "not configured" and
+# exits green. Nothing deploys by accident.
+#
+# Required repo secrets:
+#   PROD_DIRECT_DATABASE_URL  owner connection — ONLY for `prisma migrate deploy`
+#   VERCEL_TOKEN              Vercel API token
+#   VERCEL_ORG_ID             from `vercel link` (.vercel/project.json)
+#   VERCEL_PROJECT_ID         from `vercel link`
+#
+# Order matters: migrations run BEFORE the new code is promoted, and the
+# migrations in this repo are additive-only — old code keeps working against
+# the migrated schema during the promote window.
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Migrate + promote
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: guard
+        name: Check deploy configuration
+        env:
+          DIRECT_DATABASE_URL: ${{ secrets.PROD_DIRECT_DATABASE_URL }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          if [ -z "$DIRECT_DATABASE_URL" ] || [ -z "$VERCEL_TOKEN" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Deploy secrets not configured — skipping (see .github/workflows/deploy.yml header)."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - if: steps.guard.outputs.configured == 'true'
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - if: steps.guard.outputs.configured == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - if: steps.guard.outputs.configured == 'true'
+        name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Release step: schema first, code second. Runs as the OWNER role —
+      # this secret exists ONLY here, never in the Vercel runtime env.
+      - if: steps.guard.outputs.configured == 'true'
+        name: Apply migrations (prisma migrate deploy)
+        env:
+          DIRECT_DATABASE_URL: ${{ secrets.PROD_DIRECT_DATABASE_URL }}
+          DATABASE_URL: ${{ secrets.PROD_DIRECT_DATABASE_URL }} # prisma CLI needs it set; not used at runtime
+        run: pnpm db:migrate
+
+      - if: steps.guard.outputs.configured == 'true'
+        name: Deploy to Vercel (production)
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          pnpm dlx vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+          pnpm dlx vercel build --prod --token="$VERCEL_TOKEN"
+          pnpm dlx vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+
+      # Post-deploy smoke: the health endpoint must answer 200 within 2 min.
+      - if: steps.guard.outputs.configured == 'true' && vars.PROD_HEALTH_URL != ''
+        name: Smoke check /api/health
+        run: |
+          for i in $(seq 1 24); do
+            if curl -fsS "${{ vars.PROD_HEALTH_URL }}" | grep -q '"ok":true'; then
+              echo "health OK"; exit 0
+            fi
+            sleep 5
+          done
+          echo "health check did not turn green"; exit 1
