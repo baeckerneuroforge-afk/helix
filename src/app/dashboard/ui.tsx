@@ -20,7 +20,7 @@ export const RUN_STATUS: Record<SkillRunStatus, { label: string; chip: string }>
 
 export function RunStatusChip({ status }: { status: SkillRunStatus }) {
   const { label, chip } = RUN_STATUS[status];
-  return <span className={`chip ${chip}`}>{label}</span>;
+  return <span className={`chip chip--dot ${chip}`}>{label}</span>;
 }
 
 export const APPROVAL_STATUS: Record<ApprovalStatus, { label: string; chip: string }> = {
@@ -31,7 +31,7 @@ export const APPROVAL_STATUS: Record<ApprovalStatus, { label: string; chip: stri
 
 export function ApprovalStatusChip({ status }: { status: ApprovalStatus }) {
   const { label, chip } = APPROVAL_STATUS[status];
-  return <span className={`chip ${chip}`}>{label}</span>;
+  return <span className={`chip chip--dot ${chip}`}>{label}</span>;
 }
 
 const VISIBILITY_CHIP: Record<DocumentVisibility, string> = {

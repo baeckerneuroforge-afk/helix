@@ -130,7 +130,9 @@ export default async function SettingsPage({
           </form>
         </section>
         <section className="card card--table">
-          <h2 style={{ padding: '0.8rem 1.25rem 0' }}>Freigabe-Regeln pro Skill</h2>
+          <div className="card-title">
+            <h2>Freigabe-Regeln pro Skill</h2>
+          </div>
           <p className="muted" style={{ padding: '0 1.25rem' }}>
             <span className="chip chip--amber">Failsafe</span> Freigabe kann bei geldbewegenden
             Skills nicht abgeschaltet werden — Modus „nie" wird von der Engine zur Laufzeit
@@ -242,7 +244,9 @@ export default async function SettingsPage({
           </section>
 
           <section className="card card--table">
-            <h2 style={{ padding: '0.8rem 1.25rem 0' }}>Dokumente &amp; ihre Stufe</h2>
+            <div className="card-title">
+              <h2>Dokumente &amp; ihre Stufe</h2>
+            </div>
             <p className="muted" style={{ padding: '0 1.25rem' }}>
               Die Stufe eines Dokuments änderst du in der{' '}
               <Link href="/dashboard/knowledge">Wissensbasis</Link>.
@@ -275,7 +279,10 @@ export default async function SettingsPage({
 
       {tab === 'mitglieder' ? (
         <section className="card card--table">
-          <h2 style={{ padding: '0.8rem 1.25rem 0' }}>Mitglieder ({memberships.length})</h2>
+          <div className="card-title">
+            <h2>Mitglieder</h2>
+            <span className="row-meta">{memberships.length} gesamt</span>
+          </div>
           <p className="muted" style={{ padding: '0 1.25rem' }}>
             Mindestens ein Admin bleibt immer bestehen — die letzte Admin-Rolle lässt sich nicht
             entziehen. Jede Änderung wird auditiert.
@@ -421,9 +428,10 @@ export default async function SettingsPage({
           </section>
 
           <section className="card card--table">
-            <h2 style={{ padding: '0.8rem 1.25rem 0' }}>
-              Slack-Nutzer ↔ Mitglieder ({slackLinks.length})
-            </h2>
+            <div className="card-title">
+              <h2>Slack-Nutzer ↔ Mitglieder</h2>
+              <span className="row-meta">{slackLinks.length} verknüpft</span>
+            </div>
             <p className="muted" style={{ padding: '0 1.25rem' }}>
               Nur verknüpfte Slack-Nutzer handeln mit ihrer Mitglieds-Rolle (Skills starten,
               Freigaben erteilen). Unverknüpfte Nutzer sehen ausschließlich „open"-Wissen und

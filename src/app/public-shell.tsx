@@ -8,7 +8,7 @@ export function PublicShell({ children }: { children: React.ReactNode }) {
     <div className="public-page">
       <header className="public-header">
         <Link href="/" className="public-logo">
-          ergane
+          ergane<span className="dot">.</span>
         </Link>
         <nav>
           <Link href="/sign-in" className="btn btn--primary">

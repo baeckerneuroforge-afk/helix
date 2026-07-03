@@ -57,9 +57,14 @@ export default async function KnowledgePage() {
       </section>
 
       <section className="card card--table">
-        <h2 style={{ padding: '0.8rem 1.25rem 0' }}>Dokumente ({documents.length})</h2>
+        <div className="card-title">
+          <h2>Dokumente</h2>
+          <span className="row-meta">
+            {documents.length} {documents.length === 1 ? 'Eintrag' : 'Einträge'}
+          </span>
+        </div>
         {documents.length === 0 ? (
-          <p className="muted" style={{ padding: '0 1.25rem 0.8rem' }}>
+          <p className="muted" style={{ padding: '0 1.3rem 0.8rem' }}>
             Noch keine Dokumente. Lege oben das erste an.
           </p>
         ) : (

@@ -58,8 +58,8 @@ export default async function ChatPage() {
     <div className="chat-page">
       <p className="page-intro">
         Antworten kommen ausschließlich aus der{' '}
-        <Link href="/dashboard/knowledge">Wissensbasis</Link> dieser Organisation — mit Quellen.
-        Ohne passendes Wissen sagt der Assistent das ehrlich.
+        <Link href="/dashboard/knowledge">Wissensbasis</Link> dieser Organisation. Ohne passendes
+        Wissen sagt der Assistent das ehrlich.
         {stats.up + stats.down > 0 ? (
           <span className="row-meta"> · Feedback bisher: {stats.up} 👍 / {stats.down} 👎</span>
         ) : null}
@@ -67,7 +67,13 @@ export default async function ChatPage() {
 
       <div className="chat-scroll">
         {messages.length === 0 ? (
-          <div className="empty">Noch keine Nachrichten. Stelle unten die erste Frage.</div>
+          <div className="empty">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.5 8.5 8.5 0 0 1-3.8-.9L3 21l1.9-5.7a8.5 8.5 0 1 1 16.1-3.8z" />
+            </svg>
+            <strong>Noch keine Nachrichten</strong>
+            <span>Stelle unten die erste Frage — die Antwort kommt mit Quellenangaben.</span>
+          </div>
         ) : (
           messages.map((msg) => {
             if (msg.role === 'user') {
