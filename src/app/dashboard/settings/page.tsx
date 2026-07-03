@@ -14,8 +14,11 @@ import { withTenant } from '@/lib/tenant';
 import { listSkills } from '@/lib/skills';
 import { getValueSettings, DEFAULT_HOURLY_RATE_USD } from '@/lib/value';
 import { VisibilityBadge, formatEuro } from '../ui';
+import { POLICY_PRESETS } from '@/lib/policies';
 import {
+  applyGovernancePreset,
   eraseOrganization,
+  importGovernanceConfig,
   purgeChat,
   saveApprovalNotifyEmail,
   saveChatRetention,
@@ -38,6 +41,7 @@ const TAB_KEYS = [
   'approvals',
   'visibility',
   'members',
+  'governance',
   'company',
   'value',
   'slack',
@@ -348,6 +352,84 @@ export default async function SettingsPage({
             </tbody>
           </table>
         </section>
+      ) : null}
+
+      {tab === 'governance' ? (
+        <>
+          <section className="card">
+            <h2>{s.governance.presetsTitle}</h2>
+            <p className="muted" style={{ marginTop: 0 }}>
+              {s.governance.presetsHint}
+            </p>
+            <p className="muted">
+              <span className="chip chip--amber">{s.failsafeChip}</span>{' '}
+              {s.governance.moneyFailsafeNote}
+            </p>
+            <div style={{ display: 'grid', gap: '0.8rem', gridTemplateColumns: 'repeat(auto-fit, minmax(16rem, 1fr))' }}>
+              {POLICY_PRESETS.map((preset) => (
+                <div key={preset.key} className="card" style={{ margin: 0 }}>
+                  <h3 style={{ marginTop: 0 }}>
+                    {s.governance.presetNames[preset.key] ?? preset.key}
+                  </h3>
+                  <p className="row-meta">
+                    {s.governance.appliesTo(
+                      preset.approvalPolicies.length,
+                      preset.visibilityGrants.length,
+                    )}
+                  </p>
+                  <p className="muted">{s.governance.presetDescriptions[preset.key]}</p>
+                  <form action={applyGovernancePreset}>
+                    <input type="hidden" name="presetKey" value={preset.key} />
+                    <label style={{ display: 'flex', gap: '0.4rem', alignItems: 'flex-start' }}>
+                      <input type="checkbox" name="confirmOverwrite" required />
+                      <span className="row-meta">{s.governance.confirmOverwrite}</span>
+                    </label>
+                    <button type="submit" className="btn btn--primary" style={{ marginTop: '0.6rem' }}>
+                      {s.governance.applyCta}
+                    </button>
+                  </form>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="card">
+            <h2>{s.governance.exportTitle}</h2>
+            <p className="muted" style={{ marginTop: 0 }}>
+              {s.governance.exportHint}
+            </p>
+            <a className="btn btn--primary" href="/dashboard/settings/governance" download>
+              {s.governance.exportCta}
+            </a>
+          </section>
+
+          <section className="card">
+            <h2>{s.governance.importTitle}</h2>
+            <p className="muted" style={{ marginTop: 0 }}>
+              {s.governance.importHint}
+            </p>
+            <form action={importGovernanceConfig}>
+              <textarea
+                name="governanceJson"
+                rows={6}
+                placeholder={s.governance.importPlaceholder}
+                className="mono"
+                style={{ width: '100%' }}
+              />
+              <p className="row-meta" style={{ margin: '0.4rem 0' }}>
+                {s.governance.importFileLabel}{' '}
+                <input type="file" name="governanceFile" accept="application/json,.json" />
+              </p>
+              <label style={{ display: 'flex', gap: '0.4rem', alignItems: 'flex-start' }}>
+                <input type="checkbox" name="confirmOverwrite" required />
+                <span className="row-meta">{s.governance.confirmOverwrite}</span>
+              </label>
+              <button type="submit" className="btn btn--primary" style={{ marginTop: '0.6rem' }}>
+                {s.governance.importCta}
+              </button>
+            </form>
+          </section>
+        </>
       ) : null}
 
       {tab === 'company' ? (
