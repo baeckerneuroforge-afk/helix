@@ -202,6 +202,22 @@ export const en = {
     questionPlaceholder: 'e.g. How many vacation days do we have?',
     questionAria: 'Question',
     ask: 'Ask',
+    trace: {
+      summary: 'Why this answer?',
+      sourcesTitle: 'Sources used',
+      section: (n: number) => `Section ${n}`,
+      relevanceHigh: 'high relevance',
+      relevanceMedium: 'medium relevance',
+      relevanceLow: 'low relevance',
+      filtered: (n: number) =>
+        n === 1
+          ? '1 further match is not visible for your role.'
+          : `${n} further matches are not visible for your role.`,
+      noKnowledge:
+        'No sufficiently relevant sources were found — that is why there was no substantive answer (the AI was not called).',
+      insufficient:
+        'Sources were found, but they did not sufficiently support an answer — so the assistant honestly declined.',
+    },
   },
 
   skills: {

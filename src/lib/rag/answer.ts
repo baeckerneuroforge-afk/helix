@@ -8,7 +8,7 @@
 // Persistence: the user question + assistant answer land in chat_messages and
 // the audit entry in audit_log, all in ONE withTenant() transaction after the
 // answer exists (an LLM call must never run inside an open DB transaction).
-import type { Role } from '@prisma/client';
+import type { Prisma, Role } from '@prisma/client';
 import {
   getChatProvider,
   getEmbeddingProvider,
@@ -18,7 +18,7 @@ import {
 import { logAudit } from '../audit';
 import { assertWithinDailyLimit } from '../limits';
 import { withTenant } from '../tenant';
-import { retrieve, type RetrievedChunk } from './retrieve';
+import { retrieveWithTrace, type RetrievedChunk } from './retrieve';
 
 export const NO_KNOWLEDGE_ANSWER =
   'I have no verified knowledge about this in the knowledge base.';
@@ -37,9 +37,9 @@ export const LEGACY_NO_KNOWLEDGE_ANSWERS: readonly string[] = [
  * appended deterministically by THIS layer (never left to the LLM — the system
  * prompt forbids the model to emit its own source list, and any line it emits
  * anyway is stripped). The honest no-knowledge answer carries NO sources line.
- * chat_messages deliberately has no sources column (spec-fixed shape), so this
- * marked line is what persists the sources in the history; the chat UI — and
- * later the skill engine — parse it back via this marker.
+ * This marked line persists the sources inside the message text (the chat UI —
+ * and later the skill engine — parse it back via this marker); since 0021 the
+ * richer machine-readable trace additionally lives in chat_messages.trace.
  */
 export const SOURCES_MARKER = 'Sources:';
 
@@ -86,6 +86,41 @@ export interface AnswerQuestionInput {
   role?: Role;
 }
 
+/**
+ * One source the answer is grounded on — always a chunk the asker's role WAS
+ * allowed to see (it went into the LLM context). Role-filtered hits never
+ * appear here; they exist in the trace only as `filteredCount`.
+ */
+export interface AnswerTraceSource {
+  documentId: string;
+  title: string;
+  /** Chunk position within the document (0-based ord). */
+  section: number;
+  /** Cosine similarity of chunk vs. question, rounded to 4 decimals. */
+  similarity: number;
+}
+
+/**
+ * The "Why this answer?" trace persisted on the assistant chat message
+ * (chat_messages.trace, 0021) and returned to the caller.
+ *
+ * DISCLOSURE INVARIANT: hits hidden by the asker's role are represented
+ * EXCLUSIVELY as `filteredCount` — no titles, content, ids or any other
+ * identifying detail, neither here nor anywhere else in the payload.
+ */
+export interface AnswerTrace {
+  v: 1;
+  /** Chunks used as LLM context (role-visible by construction). */
+  sources: AnswerTraceSource[];
+  /** Number of nearby hits hidden by the asker's role — a bare count. */
+  filteredCount: number;
+  /** Relevance threshold in force — lets the UI band the scores meaningfully. */
+  threshold: number;
+  /** True ⇒ the honest no-knowledge answer (below threshold ⇒ the LLM was
+   * never called; or the model itself judged the context insufficient). */
+  noKnowledge: boolean;
+}
+
 export interface AnswerQuestionResult {
   /** Canonical answer text; grounded answers end with the `Quellen: …` line. */
   answer: string;
@@ -93,6 +128,8 @@ export interface AnswerQuestionResult {
   sources: string[];
   /** The chunks that were used as context (for display/debugging). */
   usedChunks: RetrievedChunk[];
+  /** Explainability trace — also persisted on the assistant chat message. */
+  trace: AnswerTrace;
 }
 
 function buildUserMessage(question: string, chunks: RetrievedChunk[]): string {
@@ -120,12 +157,14 @@ export async function answerQuestion(input: AnswerQuestionInput): Promise<Answer
   await withTenant(input.orgId, (tx) => assertWithinDailyLimit(tx, 'chat'));
 
   const embedder = input.embedder ?? getEmbeddingProvider();
-  const retrieved = await retrieve({
+  const { chunks: retrieved, filteredCount } = await retrieveWithTrace({
     orgId: input.orgId,
     query: question,
     k: input.k,
     embedder,
     role: input.role,
+    // Count only filtered hits that would actually have been used as context.
+    minSimilarity: embedder.relevanceThreshold,
   });
   const relevant = retrieved.filter((c) => c.similarity >= embedder.relevanceThreshold);
 
@@ -152,12 +191,34 @@ export async function answerQuestion(input: AnswerQuestionInput): Promise<Answer
     }
   }
 
+  // Explainability trace: what the answer used, how relevant it was, and how
+  // many nearby hits the role disclosure filter hid (COUNT ONLY — the filtered
+  // rows never reached the application, see retrieveWithTrace).
+  const trace: AnswerTrace = {
+    v: 1,
+    sources: relevant.map((c) => ({
+      documentId: c.documentId,
+      title: c.documentTitle,
+      section: c.ord,
+      similarity: Math.round(c.similarity * 10000) / 10000,
+    })),
+    filteredCount,
+    threshold: embedder.relevanceThreshold,
+    noKnowledge: answer === NO_KNOWLEDGE_ANSWER,
+  };
+
   await withTenant(input.orgId, async (tx) => {
     await tx.chatMessage.create({
       data: { orgId: input.orgId, role: 'user', content: question, actorId: input.actorId },
     });
     await tx.chatMessage.create({
-      data: { orgId: input.orgId, role: 'assistant', content: answer, actorId: input.actorId },
+      data: {
+        orgId: input.orgId,
+        role: 'assistant',
+        content: answer,
+        actorId: input.actorId,
+        trace: trace as unknown as Prisma.InputJsonValue,
+      },
     });
     await logAudit(tx, {
       orgId: input.orgId,
@@ -168,7 +229,44 @@ export async function answerQuestion(input: AnswerQuestionInput): Promise<Answer
     });
   });
 
-  return { answer, sources, usedChunks: relevant };
+  return { answer, sources, usedChunks: relevant, trace };
+}
+
+/**
+ * Parse a persisted chat_messages.trace value back into an AnswerTrace.
+ * Defensive: user rows, pre-0021 rows (NULL) and unknown shapes yield null —
+ * the UI then simply shows no trace. Malformed source entries are dropped.
+ */
+export function parseAnswerTrace(value: unknown): AnswerTrace | null {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return null;
+  const t = value as Record<string, unknown>;
+  if (t.v !== 1 || !Array.isArray(t.sources)) return null;
+  if (typeof t.filteredCount !== 'number' || typeof t.threshold !== 'number') return null;
+  const sources: AnswerTraceSource[] = [];
+  for (const s of t.sources) {
+    if (typeof s !== 'object' || s === null) continue;
+    const src = s as Record<string, unknown>;
+    if (
+      typeof src.documentId === 'string' &&
+      typeof src.title === 'string' &&
+      typeof src.section === 'number' &&
+      typeof src.similarity === 'number'
+    ) {
+      sources.push({
+        documentId: src.documentId,
+        title: src.title,
+        section: src.section,
+        similarity: src.similarity,
+      });
+    }
+  }
+  return {
+    v: 1,
+    sources,
+    filteredCount: t.filteredCount,
+    threshold: t.threshold,
+    noKnowledge: t.noKnowledge === true,
+  };
 }
 
 /**

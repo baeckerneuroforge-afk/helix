@@ -427,6 +427,9 @@ model ChatMessage {
   /// Who this turn belongs to (Clerk user id or 'slack:U…'). NULL = pre-0010
   /// row — fail-closed: never part of anyone's multi-turn history.
   actorId   String?  @map("actor_id")
+  /// Answer trace (assistant rows, 0021): used sources with scores, threshold,
+  /// no-knowledge flag — role-filtered hits only as a bare COUNT, never content.
+  trace     Json?
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   organization Organization   @relation(fields: [orgId], references: [id], onDelete: Cascade)
