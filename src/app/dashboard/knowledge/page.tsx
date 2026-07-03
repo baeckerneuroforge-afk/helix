@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { requireTenant } from '@/lib/auth-context';
+import { getI18n } from '@/lib/i18n/server';
 import { withTenant } from '@/lib/tenant';
 import { VisibilityBadge, formatDateTime } from '../ui';
 import { addDocument, changeVisibility, reingestUpload, removeDocument } from './actions';
@@ -9,6 +10,8 @@ export const dynamic = 'force-dynamic';
 
 export default async function KnowledgePage() {
   const { orgId, role } = await requireTenant();
+  const { locale, t } = await getI18n();
+  const k = t.knowledge;
   const isAdmin = role === 'admin' || role === 'owner';
 
   // Every tenant read goes through withTenant — RLS scopes this to `orgId`.
@@ -22,55 +25,51 @@ export default async function KnowledgePage() {
   return (
     <>
       <p className="page-intro">
-        Dokumente werden pro Organisation gechunkt, eingebettet und gespeichert — die Isolation
-        erzwingt die Datenbank. Fragen beantwortet der{' '}
-        <Link href="/dashboard/chat">Chat</Link> ausschließlich aus diesem Wissen.
+        {k.intro} <Link href="/dashboard/chat">{k.introChatLink}</Link> {k.introSuffix}
       </p>
 
       <section className="card">
-        <h2>Dateien hochladen</h2>
+        <h2>{k.uploadTitle}</h2>
         <p className="muted" style={{ marginTop: 0 }}>
-          PDF, DOCX, Markdown und Text werden serverseitig extrahiert und durch dieselbe
-          Chunking-/Embedding-Pipeline ingestiert. Gescannte PDFs ohne Textebene werden
-          abgelehnt (OCR kommt später).
+          {k.uploadHint}
         </p>
         <UploadDropzone />
       </section>
 
       <section className="card">
-        <h2>Text manuell anlegen</h2>
+        <h2>{k.manualTitle}</h2>
         <form action={addDocument}>
-          <label htmlFor="title">Titel</label>
-          <input id="title" name="title" placeholder="z. B. Urlaubsrichtlinie 2026" required />
-          <label htmlFor="text">Text</label>
-          <textarea id="text" name="text" rows={5} placeholder="Wissen hier einfügen…" />
-          <label htmlFor="visibility">Sichtbarkeit</label>
+          <label htmlFor="title">{k.titleLabel}</label>
+          <input id="title" name="title" placeholder={k.titlePlaceholder} required />
+          <label htmlFor="text">{k.textLabel}</label>
+          <textarea id="text" name="text" rows={5} placeholder={k.textPlaceholder} />
+          <label htmlFor="visibility">{k.visibilityLabel}</label>
           <select id="visibility" name="visibility" defaultValue="open">
-            <option value="open">open — alle Rollen</option>
-            <option value="restricted">restricted — nur berechtigte Rollen</option>
-            <option value="confidential">confidential — nur berechtigte Rollen</option>
+            <option value="open">{k.visibilityOpen}</option>
+            <option value="restricted">{k.visibilityRestricted}</option>
+            <option value="confidential">{k.visibilityConfidential}</option>
           </select>
           <button type="submit" className="btn btn--primary">
-            Ingestieren
+            {k.ingest}
           </button>
         </form>
       </section>
 
       <section className="card card--table">
-        <h2 style={{ padding: '0.8rem 1.25rem 0' }}>Dokumente ({documents.length})</h2>
+        <h2 style={{ padding: '0.8rem 1.25rem 0' }}>{k.documents(documents.length)}</h2>
         {documents.length === 0 ? (
           <p className="muted" style={{ padding: '0 1.25rem 0.8rem' }}>
-            Noch keine Dokumente. Lege oben das erste an.
+            {k.noDocuments}
           </p>
         ) : (
           <table className="table">
             <thead>
               <tr>
-                <th>Titel</th>
-                <th>Format</th>
-                <th>Sichtbarkeit</th>
-                <th>Datum</th>
-                <th>Chunks</th>
+                <th>{t.common.title}</th>
+                <th>{t.common.format}</th>
+                <th>{t.common.visibility}</th>
+                <th>{t.common.date}</th>
+                <th>{k.chunks}</th>
                 {isAdmin ? <th /> : null}
               </tr>
             </thead>
@@ -84,8 +83,8 @@ export default async function KnowledgePage() {
                   <td>
                     <span className="chip chip--gray">{doc.sourceFormat ?? 'text'}</span>
                     <div className="row-meta">
-                      {doc.pageCount != null ? `${doc.pageCount} Seiten · ` : ''}
-                      {doc.wordCount != null ? `${doc.wordCount} Wörter` : '—'}
+                      {doc.pageCount != null ? `${k.pages(doc.pageCount)} · ` : ''}
+                      {doc.wordCount != null ? k.words(doc.wordCount) : '—'}
                     </div>
                   </td>
                   <td>
@@ -106,13 +105,13 @@ export default async function KnowledgePage() {
                           <option value="confidential">confidential</option>
                         </select>{' '}
                         <button type="submit" className="btn btn--ghost select--inline">
-                          Ändern
+                          {t.common.change}
                         </button>
                       </form>
                     ) : null}
                   </td>
                   <td className="mono row-meta" style={{ whiteSpace: 'nowrap' }}>
-                    {formatDateTime(doc.createdAt)}
+                    {formatDateTime(doc.createdAt, locale)}
                   </td>
                   <td className="mono">{doc._count.chunks}</td>
                   {isAdmin ? (
@@ -132,14 +131,14 @@ export default async function KnowledgePage() {
                           accept=".pdf,.docx,.md,.txt"
                           className="select--inline"
                           style={{ maxWidth: '11rem' }}
-                          aria-label={`Neue Version für ${doc.title}`}
+                          aria-label={k.newVersionAria(doc.title)}
                         />
                         <button
                           type="submit"
                           className="btn btn--ghost select--inline"
-                          title="Ersetzt den Inhalt dieses Dokuments (gleiche ID, alte Chunks weg)"
+                          title={k.newVersionTitle}
                         >
-                          Neue Version
+                          {k.newVersion}
                         </button>
                       </form>
                       <form action={removeDocument} style={{ display: 'inline-block' }}>
@@ -147,9 +146,9 @@ export default async function KnowledgePage() {
                         <button
                           type="submit"
                           className="btn btn--ghost select--inline"
-                          title="Dokument samt Chunks unwiderruflich löschen (auditiert)"
+                          title={k.deleteTitle}
                         >
-                          Löschen
+                          {t.common.delete}
                         </button>
                       </form>
                     </td>

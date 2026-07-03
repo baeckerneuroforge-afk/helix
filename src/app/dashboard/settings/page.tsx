@@ -7,6 +7,9 @@ import type { DocumentVisibility, Role } from '@prisma/client';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { requireTenant } from '@/lib/auth-context';
+import { LOCALES, isLocale, type Dictionary } from '@/lib/i18n';
+import { setUiLocale } from '@/lib/i18n/actions';
+import { getI18n } from '@/lib/i18n/server';
 import { withTenant } from '@/lib/tenant';
 import { listSkills } from '@/lib/skills';
 import { VisibilityBadge, formatEuro } from '../ui';
@@ -16,6 +19,7 @@ import {
   saveApprovalNotifyEmail,
   saveChatRetention,
   saveCompanyProfile,
+  saveOrgLocale,
   removeSlackUserLink,
   saveApprovalPolicy,
   saveMembershipRole,
@@ -26,15 +30,18 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-const TABS = [
-  { key: 'freigaben', label: 'Freigabe-Regeln' },
-  { key: 'sichtbarkeit', label: 'Wissens-Sichtbarkeit' },
-  { key: 'mitglieder', label: 'Mitglieder & Rollen' },
-  { key: 'firma', label: 'Firmendaten' },
-  { key: 'slack', label: 'Slack' },
-  { key: 'daten', label: 'Daten & Löschung' },
+// Tab keys are stable URL identifiers (English), independent of the UI
+// language — deep links like ?tab=company work in every locale.
+const TAB_KEYS = [
+  'approvals',
+  'visibility',
+  'members',
+  'company',
+  'slack',
+  'language',
+  'data',
 ] as const;
-type TabKey = (typeof TABS)[number]['key'];
+type TabKey = (typeof TAB_KEYS)[number];
 
 // Mirrors the matrix the saveVisibilityGrants action writes.
 const GRANT_LEVELS: DocumentVisibility[] = ['restricted', 'confidential'];
@@ -47,18 +54,6 @@ const ROLE_LABEL: Record<string, string> = {
   member: 'Member',
 };
 
-const LEVEL_EXPLANATION: Array<{ level: DocumentVisibility; text: string }> = [
-  { level: 'open', text: 'Alle Rollen sehen diese Dokumente — keine Berechtigung nötig.' },
-  {
-    level: 'restricted',
-    text: 'Nur Rollen mit explizitem Grant. Ohne Grant ist das Dokument in Chat/Retrieval unsichtbar (fail-closed).',
-  },
-  {
-    level: 'confidential',
-    text: 'Höchste Stufe — ebenfalls nur per Grant. Auch Admins brauchen einen Grant, sonst sehen sie nichts.',
-  },
-];
-
 export default async function SettingsPage({
   searchParams,
 }: {
@@ -68,7 +63,16 @@ export default async function SettingsPage({
   if (role !== 'admin' && role !== 'owner') redirect('/dashboard');
 
   const params = await searchParams;
-  const tab: TabKey = TABS.some((t) => t.key === params.tab) ? (params.tab as TabKey) : 'freigaben';
+  const tab: TabKey = TAB_KEYS.some((t) => t === params.tab) ? (params.tab as TabKey) : 'approvals';
+
+  const { locale, t } = await getI18n();
+  const s = t.settings;
+
+  const levelExplanation: Array<{ level: DocumentVisibility; text: string }> = [
+    { level: 'open', text: s.levelOpen },
+    { level: 'restricted', text: s.levelRestricted },
+    { level: 'confidential', text: s.levelConfidential },
+  ];
 
   const skills = listSkills();
   const { policies, grants, documents, memberships, slackInstallations, slackLinks, orgSettings } =
@@ -84,35 +88,37 @@ export default async function SettingsPage({
 
   const granted = new Set(grants.map((g) => `${g.level}:${g.role}`));
   const adminCount = memberships.filter((m) => m.role === 'admin' || m.role === 'owner').length;
+  const rawOrgLocale = orgSettings?.locale;
+  const orgLocale = isLocale(rawOrgLocale) ? rawOrgLocale : 'en';
+  const localeLabel: Record<string, string> = {
+    en: s.languageEnglish,
+    de: s.languageGerman,
+  };
 
   return (
     <>
       <p className="page-intro">
-        Governance der Organisation: Wann braucht ein Skill eine menschliche Freigabe, welche Rolle
-        sieht welches Wissen, wer hat welche Rolle. Jede Änderung landet im{' '}
-        <Link href="/dashboard/audit">Audit</Link>.
+        {s.intro} <Link href="/dashboard/audit">{s.introAuditLink}</Link>.
       </p>
 
-      <nav className="tabs" aria-label="Einstellungen">
-        {TABS.map((t) => (
+      <nav className="tabs" aria-label={s.tabsAria}>
+        {TAB_KEYS.map((key) => (
           <Link
-            key={t.key}
-            href={`/dashboard/settings?tab=${t.key}`}
-            className={`tab${t.key === tab ? ' active' : ''}`}
+            key={key}
+            href={`/dashboard/settings?tab=${key}`}
+            className={`tab${key === tab ? ' active' : ''}`}
           >
-            {t.label}
+            {s.tabs[key]}
           </Link>
         ))}
       </nav>
 
-      {tab === 'freigaben' ? (
+      {tab === 'approvals' ? (
         <>
         <section className="card">
-          <h2>Benachrichtigung bei wartenden Freigaben</h2>
+          <h2>{s.notifyTitle}</h2>
           <p className="muted" style={{ marginTop: 0 }}>
-            Sobald ein Skill-Lauf pausiert und auf Freigabe wartet, geht eine kurze E-Mail an
-            diese Adresse (z. B. ein Team-Alias). Leer = keine Benachrichtigung. Der Versand
-            ist best-effort — die Freigabe selbst funktioniert immer auch ohne Mail.
+            {s.notifyHint}
           </p>
           <form action={saveApprovalNotifyEmail}>
             <input
@@ -120,30 +126,28 @@ export default async function SettingsPage({
               type="email"
               maxLength={320}
               defaultValue={orgSettings?.approvalNotifyEmail ?? ''}
-              placeholder="z. B. freigaben@firma.de"
+              placeholder={s.notifyPlaceholder}
               className="select--inline"
               style={{ width: '18rem' }}
             />{' '}
             <button type="submit" className="btn btn--primary select--inline">
-              Speichern
+              {t.common.save}
             </button>
           </form>
         </section>
         <section className="card card--table">
-          <h2 style={{ padding: '0.8rem 1.25rem 0' }}>Freigabe-Regeln pro Skill</h2>
+          <h2 style={{ padding: '0.8rem 1.25rem 0' }}>{s.policiesTitle}</h2>
           <p className="muted" style={{ padding: '0 1.25rem' }}>
-            <span className="chip chip--amber">Failsafe</span> Freigabe kann bei geldbewegenden
-            Skills nicht abgeschaltet werden — Modus „nie" wird von der Engine zur Laufzeit
-            überstimmt und auditiert.
+            <span className="chip chip--amber">{s.failsafeChip}</span> {s.policiesFailsafe}
           </p>
           <table className="table">
             <thead>
               <tr>
-                <th>Skill</th>
-                <th>Aktuelle Regel</th>
-                <th>Modus</th>
-                <th>Schwelle (EUR)</th>
-                <th>Freigeber-Rolle</th>
+                <th>{t.common.skill}</th>
+                <th>{s.currentRule}</th>
+                <th>{s.mode}</th>
+                <th>{s.threshold}</th>
+                <th>{s.approverRole}</th>
                 <th />
               </tr>
             </thead>
@@ -153,30 +157,32 @@ export default async function SettingsPage({
                 return (
                   <tr key={skill.key}>
                     <td>
-                      <strong>{skill.title}</strong>
+                      <strong>{t.skillTitles[skill.key] ?? skill.title}</strong>
                       <div className="row-meta mono">{skill.key}</div>
                       {skill.handlesMoney ? (
-                        <span className="chip chip--orange" title="Freigabe kann bei geldbewegenden Skills nicht abgeschaltet werden">
-                          bewegt Geld
+                        <span className="chip chip--orange" title={s.movesMoneyTitle}>
+                          {s.movesMoney}
                         </span>
                       ) : null}
                     </td>
                     <td className="row-meta">
                       {policy
                         ? policy.mode === 'threshold' && policy.thresholdAmount
-                          ? `ab ${formatEuro(policy.thresholdAmount.toNumber())}`
+                          ? s.ruleFrom(formatEuro(policy.thresholdAmount.toNumber(), locale))
                           : policy.mode === 'always'
-                            ? 'immer'
+                            ? s.ruleAlways
                             : skill.handlesMoney
-                              ? 'nie (Failsafe greift)'
-                              : 'nie'
-                        : 'keine Policy — Skill-Guardrail gilt'}
+                              ? s.ruleNeverFailsafe
+                              : s.ruleNever
+                        : s.ruleNoPolicy}
                     </td>
                     <FormCells
                       skillKey={skill.key}
                       defaultMode={policy?.mode ?? 'always'}
                       defaultThreshold={policy?.thresholdAmount?.toNumber() ?? null}
                       defaultApprover={policy?.approverRole ?? 'lead'}
+                      dict={s}
+                      saveLabel={t.common.save}
                     />
                   </tr>
                 );
@@ -187,12 +193,12 @@ export default async function SettingsPage({
         </>
       ) : null}
 
-      {tab === 'sichtbarkeit' ? (
+      {tab === 'visibility' ? (
         <>
           <section className="card">
-            <h2>Die drei Sichtbarkeits-Stufen</h2>
+            <h2>{s.visibilityLevelsTitle}</h2>
             <ul style={{ margin: 0, paddingLeft: '1.1rem', display: 'grid', gap: '0.4rem' }}>
-              {LEVEL_EXPLANATION.map(({ level, text }) => (
+              {levelExplanation.map(({ level, text }) => (
                 <li key={level}>
                   <VisibilityBadge visibility={level} /> <span className="row-meta">{text}</span>
                 </li>
@@ -201,15 +207,15 @@ export default async function SettingsPage({
           </section>
 
           <section className="card">
-            <h2>Wer darf welche Stufe sehen?</h2>
+            <h2>{s.grantsTitle}</h2>
             <p className="muted" style={{ marginTop: 0 }}>
-              „open" braucht keinen Grant. Kein Haken = Rolle sieht die Stufe nicht (fail-closed).
+              {s.grantsHint}
             </p>
             <form action={saveVisibilityGrants}>
               <table className="table" style={{ maxWidth: '32rem' }}>
                 <thead>
                   <tr>
-                    <th>Stufe</th>
+                    <th>{s.level}</th>
                     {GRANT_ROLES.map((r) => (
                       <th key={r}>{ROLE_LABEL[r]}</th>
                     ))}
@@ -226,7 +232,7 @@ export default async function SettingsPage({
                           <input
                             type="checkbox"
                             name={`grant:${level}:${r}`}
-                            aria-label={`${level} für ${ROLE_LABEL[r]}`}
+                            aria-label={s.grantAria(level, ROLE_LABEL[r] ?? r)}
                             defaultChecked={granted.has(`${level}:${r}`)}
                           />
                         </td>
@@ -236,25 +242,25 @@ export default async function SettingsPage({
                 </tbody>
               </table>
               <button type="submit" className="btn btn--primary" style={{ marginTop: '0.6rem' }}>
-                Grants speichern
+                {s.saveGrants}
               </button>
             </form>
           </section>
 
           <section className="card card--table">
-            <h2 style={{ padding: '0.8rem 1.25rem 0' }}>Dokumente &amp; ihre Stufe</h2>
+            <h2 style={{ padding: '0.8rem 1.25rem 0' }}>{s.documentsLevelTitle}</h2>
             <p className="muted" style={{ padding: '0 1.25rem' }}>
-              Die Stufe eines Dokuments änderst du in der{' '}
-              <Link href="/dashboard/knowledge">Wissensbasis</Link>.
+              {s.documentsLevelHint}{' '}
+              <Link href="/dashboard/knowledge">{s.documentsLevelLink}</Link>.
             </p>
             {documents.length === 0 ? (
-              <p className="muted" style={{ padding: '0 1.25rem 0.8rem' }}>Noch keine Dokumente.</p>
+              <p className="muted" style={{ padding: '0 1.25rem 0.8rem' }}>{s.noDocuments}</p>
             ) : (
               <table className="table">
                 <thead>
                   <tr>
-                    <th>Titel</th>
-                    <th>Sichtbarkeit</th>
+                    <th>{t.common.title}</th>
+                    <th>{t.common.visibility}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -273,19 +279,18 @@ export default async function SettingsPage({
         </>
       ) : null}
 
-      {tab === 'mitglieder' ? (
+      {tab === 'members' ? (
         <section className="card card--table">
-          <h2 style={{ padding: '0.8rem 1.25rem 0' }}>Mitglieder ({memberships.length})</h2>
+          <h2 style={{ padding: '0.8rem 1.25rem 0' }}>{s.membersTitle(memberships.length)}</h2>
           <p className="muted" style={{ padding: '0 1.25rem' }}>
-            Mindestens ein Admin bleibt immer bestehen — die letzte Admin-Rolle lässt sich nicht
-            entziehen. Jede Änderung wird auditiert.
+            {s.membersHint}
           </p>
           <table className="table">
             <thead>
               <tr>
-                <th>Kennung</th>
-                <th>Rolle</th>
-                <th>Rolle ändern</th>
+                <th>{s.memberId}</th>
+                <th>{t.common.role}</th>
+                <th>{s.changeRole}</th>
               </tr>
             </thead>
             <tbody>
@@ -299,11 +304,11 @@ export default async function SettingsPage({
                       <span className={`chip ${isAdminTier ? 'chip--indigo' : 'chip--gray'}`}>
                         {ROLE_LABEL[m.role] ?? m.role}
                       </span>
-                      {lastAdmin ? <span className="chip chip--amber">letzter Admin</span> : null}
+                      {lastAdmin ? <span className="chip chip--amber">{s.lastAdmin}</span> : null}
                     </td>
                     <td>
                       {m.role === 'owner' ? (
-                        <span className="row-meta">Owner wird nur manuell vergeben</span>
+                        <span className="row-meta">{s.ownerManual}</span>
                       ) : (
                         <form action={saveMembershipRole} style={{ display: 'inline-block' }}>
                           <input type="hidden" name="userId" value={m.userId} />
@@ -313,7 +318,7 @@ export default async function SettingsPage({
                             <option value="admin">admin</option>
                           </select>{' '}
                           <button type="submit" className="btn btn--ghost select--inline">
-                            Ändern
+                            {t.common.change}
                           </button>
                         </form>
                       )}
@@ -326,51 +331,49 @@ export default async function SettingsPage({
         </section>
       ) : null}
 
-      {tab === 'firma' ? (
+      {tab === 'company' ? (
         <section className="card">
-          <h2>Firmendaten</h2>
+          <h2>{s.companyTitle}</h2>
           <p className="muted" style={{ marginTop: 0 }}>
-            Briefkopf und Fußzeile der erzeugten Angebots- und Rechnungs-PDFs. Alle Felder
-            sind optional — leere Felder erscheinen schlicht nicht im Dokument. Jede Änderung
-            wird auditiert.
+            {s.companyHint}
           </p>
           <form action={saveCompanyProfile}>
-            <label htmlFor="companyName">Firmenname</label>
+            <label htmlFor="companyName">{s.companyName}</label>
             <input
               id="companyName"
               name="companyName"
               maxLength={200}
               defaultValue={orgSettings?.companyName ?? ''}
-              placeholder="z. B. Hephaistos Systems GmbH"
+              placeholder={s.companyNamePlaceholder}
             />
-            <label htmlFor="companyAddress">Anschrift</label>
+            <label htmlFor="companyAddress">{s.companyAddress}</label>
             <textarea
               id="companyAddress"
               name="companyAddress"
               rows={3}
               maxLength={500}
               defaultValue={orgSettings?.companyAddress ?? ''}
-              placeholder={'Musterstraße 1\n20095 Hamburg'}
+              placeholder={s.companyAddressPlaceholder}
             />
-            <label htmlFor="companyVatId">USt-IdNr.</label>
+            <label htmlFor="companyVatId">{s.companyVatId}</label>
             <input
               id="companyVatId"
               name="companyVatId"
               maxLength={50}
               defaultValue={orgSettings?.companyVatId ?? ''}
-              placeholder="z. B. DE123456789"
+              placeholder={s.companyVatIdPlaceholder}
             />
-            <label htmlFor="companyBank">Bankverbindung</label>
+            <label htmlFor="companyBank">{s.companyBank}</label>
             <textarea
               id="companyBank"
               name="companyBank"
               rows={3}
               maxLength={500}
               defaultValue={orgSettings?.companyBank ?? ''}
-              placeholder={'Musterbank\nIBAN: DE00 0000 0000 0000 0000 00\nBIC: XXXXDEXX'}
+              placeholder={s.companyBankPlaceholder}
             />
             <button type="submit" className="btn btn--primary">
-              Speichern
+              {t.common.save}
             </button>
           </form>
         </section>
@@ -379,18 +382,14 @@ export default async function SettingsPage({
       {tab === 'slack' ? (
         <>
           <section className="card">
-            <h2>Slack-Verbindung</h2>
+            <h2>{s.slackTitle}</h2>
             <p className="muted" style={{ marginTop: 0 }}>
-              Ein Slack-Workspace (Team) wird auf genau <strong>eine</strong> Organisation gemappt.
-              Anfragen aus nicht gemappten Workspaces werden abgewiesen. MVP: die Team-ID wird
-              manuell eingetragen — ein OAuth-Install-Flow ist ein späterer Schritt. Der Bot-Token
-              bleibt in <code>.env</code> (<code>SLACK_BOT_TOKEN</code>); die Datenbank speichert
-              nur einen Verweis, nie das Secret.
+              {s.slackHint}
             </p>
             {slackInstallations.length > 0 ? (
               <p>
-                <span className="chip chip--indigo">verbunden</span>{' '}
-                Team{' '}
+                <span className="chip chip--indigo">{s.slackConnected}</span>{' '}
+                {s.slackTeam}{' '}
                 {slackInstallations.map((i) => (
                   <code key={i.id} className="mono" style={{ marginRight: '0.4rem' }}>
                     {i.slackTeamId}
@@ -400,21 +399,21 @@ export default async function SettingsPage({
             ) : (
               <form action={saveSlackInstallation}>
                 <p>
-                  <span className="chip chip--gray">nicht verbunden</span>{' '}
+                  <span className="chip chip--gray">{s.slackNotConnected}</span>{' '}
                   <a className="btn btn--primary select--inline" href="/api/slack/oauth/start">
-                    Mit Slack verbinden (OAuth)
+                    {s.slackOauthCta}
                   </a>{' '}
-                  <span className="row-meta">oder manuell per Team-ID:</span>
+                  <span className="row-meta">{s.slackManualHint}</span>
                 </p>
                 <input
                   name="slackTeamId"
-                  placeholder="Slack-Team-ID, z. B. T0123456789"
+                  placeholder={s.slackTeamIdPlaceholder}
                   className="select--inline"
                   style={{ width: '16rem' }}
                   required
                 />{' '}
                 <button type="submit" className="btn btn--primary select--inline">
-                  Workspace verbinden
+                  {s.slackConnect}
                 </button>
               </form>
             )}
@@ -422,19 +421,17 @@ export default async function SettingsPage({
 
           <section className="card card--table">
             <h2 style={{ padding: '0.8rem 1.25rem 0' }}>
-              Slack-Nutzer ↔ Mitglieder ({slackLinks.length})
+              {s.slackLinksTitle(slackLinks.length)}
             </h2>
             <p className="muted" style={{ padding: '0 1.25rem' }}>
-              Nur verknüpfte Slack-Nutzer handeln mit ihrer Mitglieds-Rolle (Skills starten,
-              Freigaben erteilen). Unverknüpfte Nutzer sehen ausschließlich „open"-Wissen und
-              können nichts auslösen (fail-closed).
+              {s.slackLinksHint}
             </p>
             <table className="table">
               <thead>
                 <tr>
-                  <th>Slack-User-ID</th>
-                  <th>Mitglied</th>
-                  <th>Rolle</th>
+                  <th>{s.slackUserId}</th>
+                  <th>{s.member}</th>
+                  <th>{t.common.role}</th>
                   <th />
                 </tr>
               </thead>
@@ -454,7 +451,7 @@ export default async function SettingsPage({
                         <form action={removeSlackUserLink} style={{ display: 'inline-block' }}>
                           <input type="hidden" name="slackUserId" value={link.slackUserId} />
                           <button type="submit" className="btn btn--ghost select--inline">
-                            Entknüpfen
+                            {s.unlink}
                           </button>
                         </form>
                       </td>
@@ -465,7 +462,7 @@ export default async function SettingsPage({
                   <td>
                     <input
                       name="slackUserId"
-                      placeholder="z. B. U0123456789"
+                      placeholder={s.slackUserIdPlaceholder}
                       className="select--inline"
                       form="slack-link-form"
                       required
@@ -487,7 +484,7 @@ export default async function SettingsPage({
                       className="btn btn--primary select--inline"
                       form="slack-link-form"
                     >
-                      Verknüpfen
+                      {s.link}
                     </button>
                   </td>
                 </tr>
@@ -497,27 +494,71 @@ export default async function SettingsPage({
         </>
       ) : null}
 
-      {tab === 'daten' ? (
+      {tab === 'language' ? (
         <>
           <section className="card">
-            <h2>Datenexport (Art. 20 DSGVO)</h2>
+            <h2>{s.uiLanguageTitle}</h2>
             <p className="muted" style={{ marginTop: 0 }}>
-              Vollständiger Export aller Daten dieser Organisation als JSON (Dokumente, Chunks
-              ohne Embeddings, Chat, Runs, Policies, Slack-Mappings, Audit-Trail). Der Export
-              läuft durch <code>withTenant</code> — er kann strukturell nur die eigene
-              Organisation enthalten. Jeder Export wird auditiert.
+              {s.uiLanguageHint}
+            </p>
+            <form action={setUiLocale}>
+              <label htmlFor="ui-locale">{s.uiLanguageLabel}</label>
+              <select id="ui-locale" name="locale" defaultValue={locale} className="select--inline">
+                {LOCALES.map((l) => (
+                  <option key={l} value={l}>
+                    {localeLabel[l]}
+                  </option>
+                ))}
+              </select>{' '}
+              <button type="submit" className="btn btn--primary select--inline">
+                {t.common.save}
+              </button>
+            </form>
+          </section>
+
+          <section className="card">
+            <h2>{s.orgLanguageTitle}</h2>
+            <p className="muted" style={{ marginTop: 0 }}>
+              {s.orgLanguageHint}
+            </p>
+            <form action={saveOrgLocale}>
+              <label htmlFor="org-locale">{s.orgLanguageLabel}</label>
+              <select
+                id="org-locale"
+                name="locale"
+                defaultValue={orgLocale}
+                className="select--inline"
+              >
+                {LOCALES.map((l) => (
+                  <option key={l} value={l}>
+                    {localeLabel[l]}
+                  </option>
+                ))}
+              </select>{' '}
+              <button type="submit" className="btn btn--primary select--inline">
+                {t.common.save}
+              </button>
+            </form>
+          </section>
+        </>
+      ) : null}
+
+      {tab === 'data' ? (
+        <>
+          <section className="card">
+            <h2>{s.exportTitle}</h2>
+            <p className="muted" style={{ marginTop: 0 }}>
+              {s.exportHint}
             </p>
             <a className="btn btn--primary" href="/dashboard/settings/export" download>
-              Export herunterladen
+              {s.exportCta}
             </a>
           </section>
 
           <section className="card">
-            <h2>Chat-Aufbewahrung</h2>
+            <h2>{s.retentionTitle}</h2>
             <p className="muted" style={{ marginTop: 0 }}>
-              <strong>Automatisch:</strong> Nachrichten älter als N Tage werden nach
-              Chat-Aktivität automatisch gelöscht (leer = unbegrenzt aufbewahren).
-              Jede automatische Löschung wird auditiert.
+              {s.retentionAutoHint}
             </p>
             <form action={saveChatRetention}>
               <input
@@ -526,18 +567,17 @@ export default async function SettingsPage({
                 min="1"
                 step="1"
                 defaultValue={orgSettings?.chatRetentionDays ?? ''}
-                placeholder="unbegrenzt"
+                placeholder={s.retentionUnlimited}
                 className="select--inline"
                 style={{ width: '7rem' }}
               />{' '}
-              <span className="row-meta">Tage aufbewahren (automatisch)</span>{' '}
+              <span className="row-meta">{s.retentionDaysAuto}</span>{' '}
               <button type="submit" className="btn btn--primary select--inline">
-                Speichern
+                {t.common.save}
               </button>
             </form>
             <p className="muted" style={{ marginTop: '0.8rem' }}>
-              <strong>Einmalig:</strong> Löscht Chat-Nachrichten, die älter als die
-              angegebene Anzahl Tage sind (0 = alles). Auditiert mit Anzahl.
+              {s.retentionOnceHint}
             </p>
             <form action={purgeChat}>
               <input
@@ -549,31 +589,28 @@ export default async function SettingsPage({
                 className="select--inline"
                 style={{ width: '6rem' }}
               />{' '}
-              <span className="row-meta">Tage aufbewahren</span>{' '}
+              <span className="row-meta">{s.retentionDays}</span>{' '}
               <button type="submit" className="btn btn--ghost select--inline">
-                Ältere Nachrichten löschen
+                {s.purgeCta}
               </button>
             </form>
           </section>
 
           <section className="card" style={{ borderColor: '#c0392b' }}>
-            <h2>Organisation unwiderruflich löschen</h2>
+            <h2>{s.eraseTitle}</h2>
             <p className="muted" style={{ marginTop: 0 }}>
-              Löscht diese Organisation vollständig — inklusive Wissensbasis, Runs, Slack-Mappings
-              und Audit-Trail (Tenant-Offboarding, Art. 17). <strong>Vorher exportieren!</strong>{' '}
-              Der Löschnachweis (Zeilenzahlen pro Tabelle) wird serverseitig protokolliert. Zur
-              Bestätigung den exakten Namen der Organisation eintippen.
+              {s.eraseHint}
             </p>
             <form action={eraseOrganization}>
               <input
                 name="confirmName"
-                placeholder="Exakter Organisationsname"
+                placeholder={s.erasePlaceholder}
                 className="select--inline"
                 style={{ width: '18rem' }}
                 required
               />{' '}
               <button type="submit" className="btn btn--ghost select--inline" style={{ color: '#c0392b' }}>
-                Organisation löschen
+                {s.eraseCta}
               </button>
             </form>
           </section>
@@ -589,11 +626,15 @@ function FormCells({
   defaultMode,
   defaultThreshold,
   defaultApprover,
+  dict,
+  saveLabel,
 }: {
   skillKey: string;
   defaultMode: string;
   defaultThreshold: number | null;
   defaultApprover: string;
+  dict: Dictionary['settings'];
+  saveLabel: string;
 }) {
   const formId = `policy-${skillKey}`;
   return (
@@ -603,9 +644,9 @@ function FormCells({
           <input type="hidden" name="skillKey" value={skillKey} />
         </form>
         <select name="mode" defaultValue={defaultMode} className="select--inline" form={formId}>
-          <option value="always">immer</option>
-          <option value="threshold">ab Schwelle</option>
-          <option value="never">nie</option>
+          <option value="always">{dict.modeAlways}</option>
+          <option value="threshold">{dict.modeThreshold}</option>
+          <option value="never">{dict.modeNever}</option>
         </select>
       </td>
       <td>
@@ -615,7 +656,7 @@ function FormCells({
           step="0.01"
           min="0.01"
           defaultValue={defaultThreshold ?? undefined}
-          placeholder="z. B. 5000"
+          placeholder={dict.thresholdPlaceholder}
           className="select--inline"
           style={{ width: '7rem' }}
           form={formId}
@@ -634,7 +675,7 @@ function FormCells({
       </td>
       <td>
         <button type="submit" className="btn btn--ghost select--inline" form={formId}>
-          Speichern
+          {saveLabel}
         </button>
       </td>
     </>

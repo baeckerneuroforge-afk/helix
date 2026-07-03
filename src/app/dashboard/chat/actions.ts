@@ -43,8 +43,8 @@ export async function askQuestion(formData: FormData) {
 export async function rateAnswer(formData: FormData) {
   const messageId = String(formData.get('messageId') ?? '').trim();
   const rawVerdict = String(formData.get('verdict') ?? '');
-  if (!messageId) throw new Error('messageId ist erforderlich.');
-  if (rawVerdict !== 'up' && rawVerdict !== 'down') throw new Error('Ungültige Bewertung.');
+  if (!messageId) throw new Error('messageId is required.');
+  if (rawVerdict !== 'up' && rawVerdict !== 'down') throw new Error('Invalid rating.');
 
   const { orgId, userId } = await requireTenant();
   await submitChatFeedback({ orgId, actorId: userId, messageId, verdict: rawVerdict });

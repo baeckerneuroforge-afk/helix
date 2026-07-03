@@ -8,7 +8,7 @@ import type { ApprovalMode, DocumentVisibility, Role } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
 import { requireTenant } from '@/lib/auth-context';
 import { ensureOrgAndMembership } from '@/lib/org';
-import { setCompanyProfile } from '@/lib/company';
+import { setCompanyProfile, setOrgLocale } from '@/lib/company';
 import {
   setApprovalNotifyEmail,
   setApprovalPolicy,
@@ -43,16 +43,16 @@ async function requireTenantWithMembership() {
 export async function saveApprovalPolicy(formData: FormData) {
   const skillKey = String(formData.get('skillKey') ?? '');
   if (!listSkills().some((s) => s.key === skillKey)) {
-    throw new Error(`Unbekannter Skill: ${JSON.stringify(skillKey)}`);
+    throw new Error(`Unknown skill: ${JSON.stringify(skillKey)}`);
   }
 
   const rawMode = String(formData.get('mode') ?? '');
   const mode = MODES.find((m) => m === rawMode);
-  if (!mode) throw new Error('Ungültiger Freigabe-Modus.');
+  if (!mode) throw new Error('Invalid approval mode.');
 
   const rawApprover = String(formData.get('approverRole') ?? 'lead');
   const approverRole = APPROVER_ROLES.find((r) => r === rawApprover);
-  if (!approverRole) throw new Error('Ungültige Freigeber-Rolle.');
+  if (!approverRole) throw new Error('Invalid approver role.');
 
   let thresholdAmount: number | undefined;
   if (mode === 'threshold') {
@@ -60,7 +60,7 @@ export async function saveApprovalPolicy(formData: FormData) {
       String(formData.get('thresholdAmount') ?? '').replace(',', '.'),
     );
     if (!Number.isFinite(thresholdAmount) || thresholdAmount <= 0) {
-      throw new Error('Schwelle (EUR) muss eine positive Zahl sein.');
+      throw new Error('Threshold (EUR) must be a positive number.');
     }
   }
 
@@ -91,11 +91,11 @@ export async function saveVisibilityGrants(formData: FormData) {
 
 export async function saveMembershipRole(formData: FormData) {
   const targetUserId = String(formData.get('userId') ?? '').trim();
-  if (!targetUserId) throw new Error('userId ist erforderlich.');
+  if (!targetUserId) throw new Error('userId is required.');
 
   const rawRole = String(formData.get('role') ?? '');
   const role = ASSIGNABLE_ROLES.find((r) => r === rawRole);
-  if (!role) throw new Error('Ungültige Rolle.');
+  if (!role) throw new Error('Invalid role.');
 
   const { orgId, userId } = await requireTenantWithMembership();
   await setMembershipRole({ orgId, actorUserId: userId, userId: targetUserId, role });
@@ -109,7 +109,7 @@ export async function saveMembershipRole(formData: FormData) {
 
 export async function saveSlackInstallation(formData: FormData) {
   const slackTeamId = String(formData.get('slackTeamId') ?? '').trim();
-  if (!slackTeamId) throw new Error('Slack-Team-ID ist erforderlich.');
+  if (!slackTeamId) throw new Error('Slack team id is required.');
 
   const { orgId, userId } = await requireTenantWithMembership();
   await createSlackInstallation({ orgId, actorUserId: userId, slackTeamId });
@@ -120,8 +120,8 @@ export async function saveSlackInstallation(formData: FormData) {
 export async function saveSlackUserLink(formData: FormData) {
   const slackUserId = String(formData.get('slackUserId') ?? '').trim();
   const targetUserId = String(formData.get('userId') ?? '').trim();
-  if (!slackUserId) throw new Error('Slack-User-ID ist erforderlich.');
-  if (!targetUserId) throw new Error('Mitglied ist erforderlich.');
+  if (!slackUserId) throw new Error('Slack user id is required.');
+  if (!targetUserId) throw new Error('Member is required.');
 
   const { orgId, userId } = await requireTenantWithMembership();
   await linkSlackUser({ orgId, actorUserId: userId, slackUserId, userId: targetUserId });
@@ -131,7 +131,7 @@ export async function saveSlackUserLink(formData: FormData) {
 
 export async function removeSlackUserLink(formData: FormData) {
   const slackUserId = String(formData.get('slackUserId') ?? '').trim();
-  if (!slackUserId) throw new Error('Slack-User-ID ist erforderlich.');
+  if (!slackUserId) throw new Error('Slack user id is required.');
 
   const { orgId, userId } = await requireTenantWithMembership();
   await unlinkSlackUser({ orgId, actorUserId: userId, slackUserId });
@@ -174,6 +174,15 @@ export async function saveCompanyProfile(formData: FormData) {
   revalidatePath('/dashboard/settings');
 }
 
+export async function saveOrgLocale(formData: FormData) {
+  const locale = String(formData.get('locale') ?? '');
+
+  const { orgId, userId } = await requireTenantWithMembership();
+  await setOrgLocale({ orgId, actorUserId: userId, locale });
+
+  revalidatePath('/dashboard/settings');
+}
+
 // -----------------------------------------------------------------------------
 // Lebenszyklus & Löschung (Admin-Gate + Audit in src/lib/lifecycle/)
 // -----------------------------------------------------------------------------
@@ -181,7 +190,7 @@ export async function saveCompanyProfile(formData: FormData) {
 export async function purgeChat(formData: FormData) {
   const olderThanDays = Number.parseInt(String(formData.get('olderThanDays') ?? ''), 10);
   if (!Number.isFinite(olderThanDays) || olderThanDays < 0) {
-    throw new Error('Aufbewahrung (Tage) muss eine Zahl ≥ 0 sein.');
+    throw new Error('Retention (days) must be a number ≥ 0.');
   }
 
   const { orgId, userId } = await requireTenantWithMembership();
@@ -195,7 +204,7 @@ export async function saveChatRetention(formData: FormData) {
   const raw = String(formData.get('retentionDays') ?? '').trim();
   const retentionDays = raw === '' ? null : Number.parseInt(raw, 10);
   if (retentionDays !== null && (!Number.isFinite(retentionDays) || retentionDays <= 0)) {
-    throw new Error('Aufbewahrung (Tage) muss leer oder eine positive Zahl sein.');
+    throw new Error('Retention (days) must be empty or a positive number.');
   }
 
   const { orgId, userId } = await requireTenantWithMembership();
@@ -206,7 +215,7 @@ export async function saveChatRetention(formData: FormData) {
 
 export async function eraseOrganization(formData: FormData) {
   const confirmName = String(formData.get('confirmName') ?? '').trim();
-  if (!confirmName) throw new Error('Bestätigung (Org-Name) ist erforderlich.');
+  if (!confirmName) throw new Error('Confirmation (organization name) is required.');
 
   const { orgId, userId } = await requireTenantWithMembership();
   const proof = await deleteOrganization({ orgId, actorUserId: userId, confirmName });

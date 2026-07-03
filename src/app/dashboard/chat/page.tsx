@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { requireTenant } from '@/lib/auth-context';
-import { NO_KNOWLEDGE_ANSWER, SOURCES_MARKER } from '@/lib/rag';
+import { getI18n } from '@/lib/i18n/server';
+import { LEGACY_NO_KNOWLEDGE_ANSWERS, NO_KNOWLEDGE_ANSWER, SOURCES_MARKERS } from '@/lib/rag';
 import { withTenant } from '@/lib/tenant';
 import { getFeedbackStats, getOwnFeedback } from '@/lib/rag';
 import { askQuestion, rateAnswer } from './actions';
@@ -10,24 +11,36 @@ export const dynamic = 'force-dynamic';
 /**
  * Split a persisted assistant message into answer text + source titles.
  * Canonical format (see src/lib/rag/answer.ts): the grounded answer ends with
- * one line `Quellen: <Titel1>, <Titel2>, …` — rendered here as source chips,
- * never as running text (no double display).
+ * one line `Sources: <title1>, <title2>, …` — rendered here as source chips,
+ * never as running text (no double display). Messages persisted before the
+ * English default used `Quellen:`; both markers parse (SOURCES_MARKERS).
  */
 function splitSources(content: string): { text: string; sources: string[] } {
-  const idx = content.lastIndexOf(`\n\n${SOURCES_MARKER} `);
-  if (idx === -1) return { text: content, sources: [] };
-  return {
-    text: content.slice(0, idx),
-    sources: content
-      .slice(idx + SOURCES_MARKER.length + 3)
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean),
-  };
+  for (const marker of SOURCES_MARKERS) {
+    const idx = content.lastIndexOf(`\n\n${marker} `);
+    if (idx === -1) continue;
+    return {
+      text: content.slice(0, idx),
+      sources: content
+        .slice(idx + marker.length + 3)
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean),
+    };
+  }
+  return { text: content, sources: [] };
+}
+
+/** Honest no-knowledge answer, current or persisted legacy wording. */
+function isNoKnowledge(text: string): boolean {
+  const trimmed = text.trim();
+  return trimmed === NO_KNOWLEDGE_ANSWER || LEGACY_NO_KNOWLEDGE_ANSWERS.includes(trimmed);
 }
 
 export default async function ChatPage() {
   const { orgId, userId } = await requireTenant();
+  const { t } = await getI18n();
+  const c = t.chat;
 
   // Last 50 messages of THIS USER in THIS tenant. Per-actor since 0010: chat
   // answers can contain role-gated knowledge, so showing the whole org's
@@ -57,17 +70,15 @@ export default async function ChatPage() {
   return (
     <div className="chat-page">
       <p className="page-intro">
-        Antworten kommen ausschließlich aus der{' '}
-        <Link href="/dashboard/knowledge">Wissensbasis</Link> dieser Organisation — mit Quellen.
-        Ohne passendes Wissen sagt der Assistent das ehrlich.
+        {c.intro} <Link href="/dashboard/knowledge">{c.introKnowledgeLink}</Link> {c.introSuffix}
         {stats.up + stats.down > 0 ? (
-          <span className="row-meta"> · Feedback bisher: {stats.up} 👍 / {stats.down} 👎</span>
+          <span className="row-meta"> · {c.feedbackSoFar(stats.up, stats.down)}</span>
         ) : null}
       </p>
 
       <div className="chat-scroll">
         {messages.length === 0 ? (
-          <div className="empty">Noch keine Nachrichten. Stelle unten die erste Frage.</div>
+          <div className="empty">{c.empty}</div>
         ) : (
           messages.map((msg) => {
             if (msg.role === 'user') {
@@ -78,7 +89,7 @@ export default async function ChatPage() {
               );
             }
             const { text, sources } = splitSources(msg.content);
-            const noKnowledge = text.trim() === NO_KNOWLEDGE_ANSWER;
+            const noKnowledge = isNoKnowledge(text);
             return (
               <div
                 key={msg.id}
@@ -94,7 +105,7 @@ export default async function ChatPage() {
                     ))}
                   </div>
                 ) : null}
-                <div className="bubble-sources" aria-label="Antwort bewerten">
+                <div className="bubble-sources" aria-label={c.rateAria}>
                   {(['up', 'down'] as const).map((verdict) => (
                     <form key={verdict} action={rateAnswer} style={{ display: 'inline-block' }}>
                       <input type="hidden" name="messageId" value={msg.id} />
@@ -102,7 +113,7 @@ export default async function ChatPage() {
                       <button
                         type="submit"
                         className="btn btn--ghost select--inline"
-                        title={verdict === 'up' ? 'Hilfreich' : 'Nicht hilfreich'}
+                        title={verdict === 'up' ? c.helpful : c.notHelpful}
                         style={ownVotes[msg.id] === verdict ? { fontWeight: 700 } : undefined}
                       >
                         {verdict === 'up' ? '👍' : '👎'}
@@ -120,13 +131,13 @@ export default async function ChatPage() {
         <form action={askQuestion}>
           <input
             name="question"
-            placeholder="z. B. Wie viele Urlaubstage haben wir?"
-            aria-label="Frage"
+            placeholder={c.questionPlaceholder}
+            aria-label={c.questionAria}
             autoComplete="off"
             required
           />
           <button type="submit" className="btn btn--primary">
-            Fragen
+            {c.ask}
           </button>
         </form>
       </div>

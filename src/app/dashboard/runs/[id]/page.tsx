@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireTenant } from '@/lib/auth-context';
+import { getI18n } from '@/lib/i18n/server';
 import { getSkill } from '@/lib/skills';
 import { withTenant } from '@/lib/tenant';
 import { isUuid } from '@/lib/uuid';
@@ -8,10 +9,16 @@ import { JsonView, RunStatusChip, amountOfInput, formatDateTime, formatEuro } fr
 
 export const dynamic = 'force-dynamic';
 
-function TimelineDot({ status }: { status: 'done' | 'failed' | 'pending' }) {
+function TimelineDot({
+  status,
+  labels,
+}: {
+  status: 'done' | 'failed' | 'pending';
+  labels: { done: string; failed: string; pending: string };
+}) {
   if (status === 'done') {
     return (
-      <span className="tl-dot tl-dot--done" aria-label="erledigt">
+      <span className="tl-dot tl-dot--done" aria-label={labels.done}>
         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
           <path d="M20 6 9 17l-5-5" />
         </svg>
@@ -20,14 +27,14 @@ function TimelineDot({ status }: { status: 'done' | 'failed' | 'pending' }) {
   }
   if (status === 'failed') {
     return (
-      <span className="tl-dot tl-dot--failed" aria-label="fehlgeschlagen">
+      <span className="tl-dot tl-dot--failed" aria-label={labels.failed}>
         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" aria-hidden>
           <path d="M18 6 6 18M6 6l12 12" />
         </svg>
       </span>
     );
   }
-  return <span className="tl-dot" aria-label="ausstehend" />;
+  return <span className="tl-dot" aria-label={labels.pending} />;
 }
 
 export default async function RunDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -35,6 +42,8 @@ export default async function RunDetailPage({ params }: { params: Promise<{ id: 
   if (!isUuid(id)) notFound();
 
   const { orgId } = await requireTenant();
+  const { locale, t } = await getI18n();
+  const r = t.runDetail;
 
   const { run, steps, approvals } = await withTenant(orgId, async (tx) => ({
     // RLS scopes to the tenant — a foreign run id is simply "not found".
@@ -55,6 +64,7 @@ export default async function RunDetailPage({ params }: { params: Promise<{ id: 
 
   const pendingApproval = approvals.find((a) => a.status === 'pending');
   const amount = amountOfInput(run.input);
+  const dotLabels = { done: r.stepDone, failed: r.stepFailed, pending: r.stepPending };
 
   return (
     <>
@@ -63,14 +73,14 @@ export default async function RunDetailPage({ params }: { params: Promise<{ id: 
           <h2 style={{ margin: 0 }}>
             <span className="mono">{run.skillKey}</span>
           </h2>
-          <RunStatusChip status={run.status} />
+          <RunStatusChip status={run.status} locale={locale} />
         </div>
         <div className="row-meta">
-          <span className="mono">{run.id}</span> · gestartet {formatDateTime(run.createdAt)}
+          <span className="mono">{run.id}</span> · {r.started} {formatDateTime(run.createdAt, locale)}
           {amount !== null ? (
             <>
               {' '}
-              · <span className="mono">{formatEuro(amount)}</span>
+              · <span className="mono">{formatEuro(amount, locale)}</span>
             </>
           ) : null}
         </div>
@@ -78,31 +88,31 @@ export default async function RunDetailPage({ params }: { params: Promise<{ id: 
 
       {pendingApproval ? (
         <section className="card card--awaiting">
-          <strong>Wartet auf Freigabe:</strong> {pendingApproval.reason}
+          <strong>{r.awaitingApproval}</strong> {pendingApproval.reason}
           <div style={{ marginTop: '0.4rem' }}>
-            <Link href="/dashboard/approvals">Zur Freigaben-Warteschlange →</Link>
+            <Link href="/dashboard/approvals">{r.toApprovalQueue}</Link>
           </div>
         </section>
       ) : null}
 
       <section className="card">
-        <h2>Schritte</h2>
+        <h2>{r.steps}</h2>
         <ol className="timeline">
           {declaredSteps.map((name, idx) => {
             const step = stepByIdx.get(idx);
             const status = step ? (step.status === 'done' ? 'done' : 'failed') : 'pending';
             return (
               <li key={`${idx}-${name}`}>
-                <TimelineDot status={status} />
+                <TimelineDot status={status} labels={dotLabels} />
                 <div className="tl-name">{name}</div>
                 {step?.detail != null ? (
                   <details className="json-details">
-                    <summary>Detail</summary>
+                    <summary>{t.common.detail}</summary>
                     <JsonView value={step.detail} />
                   </details>
                 ) : (
                   <div className="row-meta">
-                    {status === 'pending' ? 'noch nicht ausgeführt' : null}
+                    {status === 'pending' ? r.notExecutedYet : null}
                   </div>
                 )}
               </li>
@@ -113,15 +123,15 @@ export default async function RunDetailPage({ params }: { params: Promise<{ id: 
 
       {approvals.length > 0 ? (
         <section className="card">
-          <h2>Freigaben</h2>
+          <h2>{r.approvals}</h2>
           {approvals.map((a) => (
             <div key={a.id} className="row-meta" style={{ marginBottom: '0.35rem' }}>
               <span className="mono">{a.status}</span> — {a.reason}
               {a.decidedBy ? (
                 <>
                   {' '}
-                  · entschieden von <span className="mono">{a.decidedBy}</span>
-                  {a.decidedAt ? ` am ${formatDateTime(a.decidedAt)}` : null}
+                  · {r.decidedBy} <span className="mono">{a.decidedBy}</span>
+                  {a.decidedAt ? ` ${r.decidedAt} ${formatDateTime(a.decidedAt, locale)}` : null}
                 </>
               ) : null}
             </div>
@@ -130,12 +140,12 @@ export default async function RunDetailPage({ params }: { params: Promise<{ id: 
       ) : null}
 
       <section className="card">
-        <h2>Ergebnis</h2>
+        <h2>{r.result}</h2>
         {run.result != null ? (
           <JsonView value={run.result} />
         ) : (
           <p className="muted" style={{ margin: 0 }}>
-            Noch kein Ergebnis — der Run ist nicht abgeschlossen.
+            {r.noResult}
           </p>
         )}
       </section>
