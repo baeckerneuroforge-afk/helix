@@ -8,6 +8,7 @@
 import { useState, useTransition } from 'react';
 import type { Locale } from '@/lib/i18n';
 import type { DemoItem, IsolationProof } from '@/lib/demo/isolation';
+import { HelixMark } from '@/app/brand';
 import { runIsolationProof } from './actions';
 
 interface OrgView {
@@ -231,7 +232,8 @@ export function IsolationDemo({
       <header className="leak-head">
         <div className="leak-brand">
           <span className="leak-wordmark">
-            ergane<span className="leak-dot">.</span>
+            <HelixMark size={22} variant="light" />
+            helix<span className="leak-dot">.ai</span>
           </span>
           <span className="chip chip--indigo">
             <span className="leak-live-dot" /> {c.liveBadge}

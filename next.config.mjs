@@ -23,13 +23,16 @@ const nextConfig = {
   // Baseline security headers on every response (Phase 12). A CSP is NOT set
   // here yet: Next's inline runtime needs nonces/hashes — introduce it via
   // middleware when the surface stabilizes, don't ship a lax one.
+  // X-Frame-Options: DENY is production-only — local dev tooling (embedded
+  // preview browsers) renders the app in an iframe; prod stays locked down.
   async headers() {
+    const isProd = process.env.NODE_ENV === 'production';
     return [
       {
         source: '/(.*)',
         headers: [
           { key: 'X-Content-Type-Options', value: 'nosniff' },
-          { key: 'X-Frame-Options', value: 'DENY' },
+          ...(isProd ? [{ key: 'X-Frame-Options', value: 'DENY' }] : []),
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
         ],
