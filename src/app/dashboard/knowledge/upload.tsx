@@ -9,6 +9,7 @@
 // holds display state.
 import { useRef, useState, useTransition, type DragEvent } from 'react';
 import { useRouter } from 'next/navigation';
+import { useDict } from '@/lib/i18n/client';
 import { ingestUpload, type UploadFileResult } from './actions';
 
 const ACCEPT = '.pdf,.docx,.md,.txt';
@@ -20,6 +21,8 @@ type ItemState =
 
 export function UploadDropzone() {
   const router = useRouter();
+  const t = useDict();
+  const k = t.knowledge;
   const inputRef = useRef<HTMLInputElement>(null);
   const [items, setItems] = useState<ItemState[]>([]);
   const [visibility, setVisibility] = useState('open');
@@ -41,7 +44,7 @@ export function UploadDropzone() {
         try {
           result = await ingestUpload(formData);
         } catch {
-          result = { fileName: list[i].name, ok: false, error: 'Übertragung fehlgeschlagen.' };
+          result = { fileName: list[i].name, ok: false, error: k.upload.transferFailed };
         }
         setItems((prev) => prev.map((it, j) => (j === i ? { status: 'done', ...result } : it)));
       }
@@ -60,7 +63,7 @@ export function UploadDropzone() {
       <div
         role="button"
         tabIndex={0}
-        aria-label="Dateien hochladen"
+        aria-label={k.upload.dropzoneAria}
         onClick={() => inputRef.current?.click()}
         onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && inputRef.current?.click()}
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
@@ -68,9 +71,9 @@ export function UploadDropzone() {
         onDrop={onDrop}
         className={`dropzone${dragOver ? ' dropzone--over' : ''}${isPending ? ' dropzone--busy' : ''}`}
       >
-        <strong>Dateien hierher ziehen</strong> oder klicken zum Auswählen
+        <strong>{k.upload.dropHere}</strong> {k.upload.orClick}
         <div className="muted" style={{ marginTop: '0.35rem', fontSize: '0.85rem' }}>
-          .pdf, .docx, .md, .txt — mehrere Dateien möglich, max. 20 MB pro Datei, kein OCR
+          {k.upload.constraints}
         </div>
         <input
           ref={inputRef}
@@ -83,16 +86,16 @@ export function UploadDropzone() {
         />
       </div>
 
-      <label htmlFor="upload-visibility" style={{ marginTop: '0.75rem' }}>Sichtbarkeit für hochgeladene Dateien</label>
+      <label htmlFor="upload-visibility" style={{ marginTop: '0.75rem' }}>{k.upload.visibilityLabel}</label>
       <select
         id="upload-visibility"
         value={visibility}
         onChange={(e) => setVisibility(e.target.value)}
         disabled={isPending}
       >
-        <option value="open">open — alle Rollen</option>
-        <option value="restricted">restricted — nur berechtigte Rollen</option>
-        <option value="confidential">confidential — nur berechtigte Rollen</option>
+        <option value="open">{k.visibilityOpen}</option>
+        <option value="restricted">{k.visibilityRestricted}</option>
+        <option value="confidential">{k.visibilityConfidential}</option>
       </select>
 
       {items.length > 0 ? (
@@ -101,14 +104,14 @@ export function UploadDropzone() {
             <li key={`${it.fileName}-${i}`} style={{ padding: '0.3rem 0', borderTop: '1px solid #eceef2' }}>
               <span className="mono" style={{ fontSize: '0.85rem' }}>{it.fileName}</span>{' '}
               {it.status === 'pending' ? (
-                <span className="muted">wartet…</span>
+                <span className="muted">{k.upload.waiting}</span>
               ) : it.status === 'uploading' ? (
-                <span className="chip chip--indigo">wird ingestiert…</span>
+                <span className="chip chip--indigo">{k.upload.ingesting}</span>
               ) : it.ok ? (
                 <span className="chip chip--green">
-                  ✓ {it.chunkCount} Chunks · {it.format}
-                  {it.pageCount != null ? ` · ${it.pageCount} Seiten` : ''}
-                  {it.wordCount != null ? ` · ${it.wordCount} Wörter` : ''}
+                  ✓ {it.chunkCount} {k.chunks} · {it.format}
+                  {it.pageCount != null ? ` · ${k.pages(it.pageCount)}` : ''}
+                  {it.wordCount != null ? ` · ${k.words(it.wordCount)}` : ''}
                 </span>
               ) : (
                 <span className="chip chip--red">✗ {it.error}</span>

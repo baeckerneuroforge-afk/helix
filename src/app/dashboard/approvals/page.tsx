@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { requireTenant } from '@/lib/auth-context';
+import { getI18n } from '@/lib/i18n/server';
 import { roleSatisfies } from '@/lib/policies';
 import { withTenant } from '@/lib/tenant';
 import { ApprovalStatusChip, amountOfInput, formatDateTime, formatEuro } from '../ui';
@@ -9,6 +10,8 @@ export const dynamic = 'force-dynamic';
 
 export default async function ApprovalsPage() {
   const { orgId, role } = await requireTenant();
+  const { locale, t } = await getI18n();
+  const a = t.approvals;
 
   const { pending, decided } = await withTenant(orgId, async (tx) => ({
     pending: await tx.approval.findMany({
@@ -31,8 +34,8 @@ export default async function ApprovalsPage() {
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
             <path d="M9 12l2 2 4-4M12 2l7 4v6c0 5-3.5 8.5-7 10-3.5-1.5-7-5-7-10V6l7-4z" />
           </svg>
-          <strong>Keine wartenden Freigaben</strong>
-          <span>Alles entschieden — sobald ein Skill eine menschliche Freigabe braucht, erscheint sie hier.</span>
+          <strong>{a.emptyTitle}</strong>
+          <span>{a.emptyHint}</span>
         </div>
       ) : (
         pending.map((approval) => {
@@ -50,23 +53,23 @@ export default async function ApprovalsPage() {
                     <span className="mono">{approval.run.skillKey}</span>
                   </strong>
                   <div className="row-meta">
-                    angefordert {formatDateTime(approval.createdAt)} ·{' '}
+                    {a.requestedAt} {formatDateTime(approval.createdAt, locale)} ·{' '}
                     <Link href={`/dashboard/runs/${approval.runId}`}>
-                      Run <span className="mono">{approval.runId.slice(0, 8)}…</span>
+                      {a.run} <span className="mono">{approval.runId.slice(0, 8)}…</span>
                     </Link>
                   </div>
                 </div>
                 {amount !== null ? (
-                  <span className="approval-amount">{formatEuro(amount)}</span>
+                  <span className="approval-amount">{formatEuro(amount, locale)}</span>
                 ) : null}
               </div>
               <div>
-                <span className="chip chip--amber">wartet auf Freigabe</span>{' '}
+                <span className="chip chip--amber">{a.awaiting}</span>{' '}
                 {approval.requiredRole ? (
-                  <span className="chip">Rolle: {approval.requiredRole}</span>
+                  <span className="chip">{a.roleChip(approval.requiredRole)}</span>
                 ) : null}
               </div>
-              <div>Grund: {approval.reason}</div>
+              <div>{a.reason} {approval.reason}</div>
               <ApprovalActions
                 runId={approval.runId}
                 canDecide={canDecide}
@@ -80,16 +83,16 @@ export default async function ApprovalsPage() {
       {decided.length > 0 ? (
         <section className="card card--table">
           <div className="card-title">
-            <h2>Entschieden</h2>
-            <span className="row-meta">letzte {decided.length}</span>
+            <h2>{a.decided}</h2>
+            <span className="row-meta">{a.decidedRecent(decided.length)}</span>
           </div>
           <table className="table">
             <thead>
               <tr>
-                <th>Skill</th>
-                <th>Status</th>
-                <th>Entschieden von</th>
-                <th>Am</th>
+                <th>{t.common.skill}</th>
+                <th>{t.common.status}</th>
+                <th>{a.decidedBy}</th>
+                <th>{a.decidedAt}</th>
               </tr>
             </thead>
             <tbody>
@@ -102,11 +105,11 @@ export default async function ApprovalsPage() {
                     <div className="row-meta">{approval.reason}</div>
                   </td>
                   <td>
-                    <ApprovalStatusChip status={approval.status} />
+                    <ApprovalStatusChip status={approval.status} locale={locale} />
                   </td>
                   <td className="mono row-meta">{approval.decidedBy ?? '—'}</td>
                   <td className="mono row-meta" style={{ whiteSpace: 'nowrap' }}>
-                    {approval.decidedAt ? formatDateTime(approval.decidedAt) : '—'}
+                    {approval.decidedAt ? formatDateTime(approval.decidedAt, locale) : '—'}
                   </td>
                 </tr>
               ))}

@@ -1,37 +1,49 @@
 // Shared, server-renderable UI atoms for the dashboard views. Pure display —
 // no data access. The chip colors implement the design-system semantics:
-// indigo = liest, orange = handelt, bernstein = wartet auf Mensch,
-// grün = completed, rot = rejected/failed.
+// indigo = reads, orange = acts, amber = waits for a human,
+// green = completed, red = rejected/failed.
+//
+// Labels are locale-aware: every component takes the caller's locale (pages
+// resolve it once via getI18n()) — the atoms stay synchronous and pure.
 import type {
   ActorType,
   ApprovalStatus,
   DocumentVisibility,
   SkillRunStatus,
 } from '@prisma/client';
+import { getDictionary, type Locale } from '@/lib/i18n';
 
-export const RUN_STATUS: Record<SkillRunStatus, { label: string; chip: string }> = {
-  running: { label: 'läuft', chip: 'chip--indigo' },
-  awaiting_approval: { label: 'wartet auf Freigabe', chip: 'chip--amber' },
-  approved: { label: 'freigegeben', chip: 'chip--green' },
-  rejected: { label: 'abgelehnt', chip: 'chip--red' },
-  completed: { label: 'abgeschlossen', chip: 'chip--green' },
-  failed: { label: 'fehlgeschlagen', chip: 'chip--red' },
+export { formatDateTime, formatEuro } from '@/lib/i18n';
+
+const RUN_CHIP: Record<SkillRunStatus, string> = {
+  running: 'chip--indigo',
+  awaiting_approval: 'chip--amber',
+  approved: 'chip--green',
+  rejected: 'chip--red',
+  completed: 'chip--green',
+  failed: 'chip--red',
 };
 
-export function RunStatusChip({ status }: { status: SkillRunStatus }) {
-  const { label, chip } = RUN_STATUS[status];
-  return <span className={`chip chip--dot ${chip}`}>{label}</span>;
+export function RunStatusChip({ status, locale }: { status: SkillRunStatus; locale: Locale }) {
+  const label = getDictionary(locale).status.run[status];
+  return <span className={`chip chip--dot ${RUN_CHIP[status]}`}>{label}</span>;
 }
 
-export const APPROVAL_STATUS: Record<ApprovalStatus, { label: string; chip: string }> = {
-  pending: { label: 'offen', chip: 'chip--amber' },
-  approved: { label: 'freigegeben', chip: 'chip--green' },
-  rejected: { label: 'abgelehnt', chip: 'chip--red' },
+const APPROVAL_CHIP: Record<ApprovalStatus, string> = {
+  pending: 'chip--amber',
+  approved: 'chip--green',
+  rejected: 'chip--red',
 };
 
-export function ApprovalStatusChip({ status }: { status: ApprovalStatus }) {
-  const { label, chip } = APPROVAL_STATUS[status];
-  return <span className={`chip chip--dot ${chip}`}>{label}</span>;
+export function ApprovalStatusChip({
+  status,
+  locale,
+}: {
+  status: ApprovalStatus;
+  locale: Locale;
+}) {
+  const label = getDictionary(locale).status.approval[status];
+  return <span className={`chip chip--dot ${APPROVAL_CHIP[status]}`}>{label}</span>;
 }
 
 const VISIBILITY_CHIP: Record<DocumentVisibility, string> = {
@@ -44,30 +56,13 @@ export function VisibilityBadge({ visibility }: { visibility: DocumentVisibility
   return <span className={`chip ${VISIBILITY_CHIP[visibility]}`}>{visibility}</span>;
 }
 
-export function ActorChip({ actorType }: { actorType: ActorType }) {
+export function ActorChip({ actorType, locale }: { actorType: ActorType; locale: Locale }) {
+  const t = getDictionary(locale);
   return (
     <span className={`chip ${actorType === 'human' ? 'chip--gray' : 'chip--indigo'}`}>
-      {actorType === 'human' ? 'Mensch' : 'Agent'}
+      {actorType === 'human' ? t.status.actor.human : t.status.actor.agent}
     </span>
   );
-}
-
-const DATE_TIME = new Intl.DateTimeFormat('de-DE', {
-  day: '2-digit',
-  month: '2-digit',
-  year: 'numeric',
-  hour: '2-digit',
-  minute: '2-digit',
-});
-
-export function formatDateTime(d: Date): string {
-  return DATE_TIME.format(d);
-}
-
-const EURO = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' });
-
-export function formatEuro(n: number): string {
-  return EURO.format(n);
 }
 
 /** Monetary amount of a run input (beleg_kontieren convention), if present. */

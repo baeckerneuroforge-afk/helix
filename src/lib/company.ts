@@ -33,12 +33,12 @@ export const EMPTY_COMPANY_PROFILE: CompanyProfile = {
 };
 
 /** Feld-Limits — Spiegel der CHECK-Constraints aus Migration 0015, damit der
- * Nutzer eine deutsche Meldung sieht statt eines DB-Fehlers. */
+ * Nutzer eine verständliche Meldung sieht statt eines DB-Fehlers. */
 const FIELD_LIMITS: Record<keyof CompanyProfile, { label: string; max: number }> = {
-  name: { label: 'Firmenname', max: 200 },
-  address: { label: 'Anschrift', max: 500 },
-  vatId: { label: 'USt-IdNr.', max: 50 },
-  bank: { label: 'Bankverbindung', max: 500 },
+  name: { label: 'Company name', max: 200 },
+  address: { label: 'Address', max: 500 },
+  vatId: { label: 'VAT ID', max: 50 },
+  bank: { label: 'Bank details', max: 500 },
 };
 
 /** '' / whitespace → null; sonst getrimmter Wert. Längen-Check fail-closed. */
@@ -47,7 +47,7 @@ function normalizeField(field: keyof CompanyProfile, value: string | null): stri
   if (trimmed === '') return null;
   const { label, max } = FIELD_LIMITS[field];
   if (trimmed.length > max) {
-    throw new Error(`${label} darf höchstens ${max} Zeichen lang sein.`);
+    throw new Error(`${label} must be at most ${max} characters long.`);
   }
   return trimmed;
 }
@@ -62,6 +62,49 @@ export async function getCompanyProfile(tx: Tx, orgId: string): Promise<CompanyP
     vatId: row?.companyVatId ?? null,
     bank: row?.companyBank ?? null,
   };
+}
+
+export interface SetOrgLocaleInput {
+  orgId: string;
+  /** Der ändernde Mensch — muss Admin dieses Tenants sein. */
+  actorUserId: string;
+  locale: string;
+}
+
+/** Org-wide output language (PDFs, e-mails) — same admin gate + audit shape
+ * as setCompanyProfile. The UI language is a browser cookie, not this. */
+export async function setOrgLocale(input: SetOrgLocaleInput): Promise<void> {
+  if (input.locale !== 'en' && input.locale !== 'de') {
+    throw new Error('Organization language must be "en" or "de".');
+  }
+
+  return withTenant(input.orgId, async (tx) => {
+    const role = await getMemberRole(tx, input.actorUserId);
+    if (!role || !ADMIN_ROLES.includes(role)) {
+      throw new Error(
+        `company: user ${JSON.stringify(input.actorUserId)} (role: ${role ?? 'none'}) may not change the organization language — admin required.`,
+      );
+    }
+
+    const old = await tx.orgSettings.findUnique({
+      where: { orgId: input.orgId },
+      select: { locale: true },
+    });
+    await tx.orgSettings.upsert({
+      where: { orgId: input.orgId },
+      create: { orgId: input.orgId, locale: input.locale },
+      update: { locale: input.locale },
+    });
+
+    await logAudit(tx, {
+      orgId: input.orgId,
+      actorId: input.actorUserId,
+      actorType: 'human',
+      action: 'policy.changed',
+      target: 'org_settings:locale',
+      detail: { old: old?.locale ?? null, new: input.locale },
+    });
+  });
 }
 
 export interface SetCompanyProfileInput {

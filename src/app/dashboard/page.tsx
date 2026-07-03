@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { requireTenant } from '@/lib/auth-context';
+import { getI18n } from '@/lib/i18n/server';
 import { listSkills } from '@/lib/skills';
 import { withTenant } from '@/lib/tenant';
 import { OnboardingCard } from './onboarding';
@@ -36,6 +37,8 @@ const ICONS = {
 
 export default async function DashboardPage() {
   const { orgId } = await requireTenant();
+  const { locale, t } = await getI18n();
+  const o = t.overview;
 
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
   const { documentCount, runsLast7d, pendingApprovals, recentAudit, onboarding } =
@@ -51,7 +54,7 @@ export default async function DashboardPage() {
           orderBy: { createdAt: 'desc' },
           take: 8,
         }),
-        // "Erste Schritte": Fortschritt aus echten Daten, kein eigener Zustand.
+        // "Getting started": progress derived from real data, no extra state.
         onboarding: {
           hasDocument: documents > 0,
           hasChatMessage: (await tx.chatMessage.count()) > 0,
@@ -66,28 +69,28 @@ export default async function DashboardPage() {
 
   const kpis = [
     {
-      label: 'Wissens-Einträge',
+      label: o.kpiDocuments,
       value: documentCount,
       href: '/dashboard/knowledge',
       icon: ICONS.knowledge,
       attention: false,
     },
     {
-      label: 'Skills verfügbar',
+      label: o.kpiSkills,
       value: skillCount,
       href: '/dashboard/skills',
       icon: ICONS.skills,
       attention: false,
     },
     {
-      label: 'Ausführungen (7 Tage)',
+      label: o.kpiRuns7d,
       value: runsLast7d,
       href: '/dashboard/runs',
       icon: ICONS.runs,
       attention: false,
     },
     {
-      label: 'Wartende Freigaben',
+      label: o.kpiPendingApprovals,
       value: pendingApprovals,
       href: '/dashboard/approvals',
       icon: ICONS.approvals,
@@ -97,18 +100,15 @@ export default async function DashboardPage() {
 
   return (
     <>
-      <OnboardingCard progress={onboarding} />
+      <OnboardingCard progress={onboarding} dict={t.onboarding} />
 
       {pendingApprovals > 0 ? (
         <div className="banner" role="status">
           <Icon d={ICONS.approvals} />
           <span>
-            <strong>
-              {pendingApprovals} {pendingApprovals === 1 ? 'Ausführung wartet' : 'Ausführungen warten'}
-            </strong>{' '}
-            auf eine menschliche Freigabe.
+            <strong>{o.bannerWaiting(pendingApprovals)}</strong> {o.bannerSuffix}
           </span>
-          <Link href="/dashboard/approvals">Jetzt entscheiden →</Link>
+          <Link href="/dashboard/approvals">{o.bannerCta}</Link>
         </div>
       ) : null}
 
@@ -128,15 +128,14 @@ export default async function DashboardPage() {
 
       <section className="card card--table">
         <div className="card-title">
-          <h2>Letzte Aktivität</h2>
+          <h2>{o.recentActivity}</h2>
           <Link className="row-meta" href="/dashboard/audit">
-            Vollständiges Audit →
+            {o.fullAudit}
           </Link>
         </div>
         {recentAudit.length === 0 ? (
           <p className="muted" style={{ padding: '0 1.3rem 0.8rem' }}>
-            Noch keine Einträge. Aktivität erscheint hier, sobald Wissen ingestiert oder ein
-            Skill ausgeführt wird.
+            {o.noActivity}
           </p>
         ) : (
           <table className="table">
@@ -144,11 +143,11 @@ export default async function DashboardPage() {
               {recentAudit.map((entry) => (
                 <tr key={entry.id}>
                   <td className="mono row-meta" style={{ whiteSpace: 'nowrap' }}>
-                    {formatDateTime(entry.createdAt)}
+                    {formatDateTime(entry.createdAt, locale)}
                   </td>
                   <td className="mono">{entry.action}</td>
                   <td>
-                    <ActorChip actorType={entry.actorType} />
+                    <ActorChip actorType={entry.actorType} locale={locale} />
                   </td>
                 </tr>
               ))}
@@ -162,8 +161,8 @@ export default async function DashboardPage() {
           <span className="quick-icon">
             <Icon d={ICONS.chat} />
           </span>
-          <strong>Frage stellen</strong>
-          <span className="quick-hint">Antworten aus dem geprüften Wissen — immer mit Quellen.</span>
+          <strong>{o.quickAskTitle}</strong>
+          <span className="quick-hint">{o.quickAskHint}</span>
           <span className="quick-arrow">
             <Icon d={ICONS.arrow} />
           </span>
@@ -172,8 +171,8 @@ export default async function DashboardPage() {
           <span className="quick-icon">
             <Icon d={ICONS.knowledge} />
           </span>
-          <strong>Wissen hochladen</strong>
-          <span className="quick-hint">PDF, DOCX, Markdown oder Text ingestieren und Sichtbarkeit steuern.</span>
+          <strong>{o.quickUploadTitle}</strong>
+          <span className="quick-hint">{o.quickUploadHint}</span>
           <span className="quick-arrow">
             <Icon d={ICONS.arrow} />
           </span>
@@ -182,8 +181,8 @@ export default async function DashboardPage() {
           <span className="quick-icon">
             <Icon d={ICONS.skills} />
           </span>
-          <strong>Skill starten</strong>
-          <span className="quick-hint">Automatisierungen ausführen — Guardrails inklusive.</span>
+          <strong>{o.quickSkillTitle}</strong>
+          <span className="quick-hint">{o.quickSkillHint}</span>
           <span className="quick-arrow">
             <Icon d={ICONS.arrow} />
           </span>

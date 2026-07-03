@@ -17,7 +17,7 @@ import { listSkills, startRun, type SkillJson } from '@/lib/skills';
 export async function startSkillRun(formData: FormData) {
   const skillKey = String(formData.get('skillKey') ?? '');
   const skill = listSkills().find((s) => s.key === skillKey);
-  if (!skill) throw new Error(`Unbekannter Skill: ${JSON.stringify(skillKey)}`);
+  if (!skill) throw new Error(`Unknown skill: ${JSON.stringify(skillKey)}`);
 
   let input: SkillJson;
   if (skill.key === 'beleg_kontieren') {
@@ -26,14 +26,14 @@ export async function startSkillRun(formData: FormData) {
       String(formData.get('betragEur') ?? '').replace(',', '.'),
     );
     const belegNummer = String(formData.get('belegNummer') ?? '').trim();
-    if (!beschreibung) throw new Error('Beschreibung ist erforderlich.');
+    if (!beschreibung) throw new Error('Description is required.');
     if (!Number.isFinite(betragEur) || betragEur <= 0) {
-      throw new Error('Betrag (EUR) muss eine positive Zahl sein.');
+      throw new Error('Amount (EUR) must be a positive number.');
     }
     input = { beschreibung, betragEur, ...(belegNummer ? { belegNummer } : {}) };
   } else if (skill.key === 'wissen_zusammenfassen') {
     const frage = String(formData.get('frage') ?? '').trim();
-    if (!frage) throw new Error('Frage/Thema ist erforderlich.');
+    if (!frage) throw new Error('Question/topic is required.');
     input = { frage };
   } else if (skill.key === 'angebot_erstellen') {
     const kunde = String(formData.get('kunde') ?? '').trim();
@@ -41,27 +41,27 @@ export async function startSkillRun(formData: FormData) {
     const betragEur = Number.parseFloat(
       String(formData.get('betragEur') ?? '').replace(',', '.'),
     );
-    if (!kunde) throw new Error('Kunde ist erforderlich.');
-    if (!leistung) throw new Error('Leistung ist erforderlich.');
+    if (!kunde) throw new Error('Customer is required.');
+    if (!leistung) throw new Error('Service is required.');
     if (!Number.isFinite(betragEur) || betragEur <= 0) {
-      throw new Error('Betrag (EUR) muss eine positive Zahl sein.');
+      throw new Error('Amount (EUR) must be a positive number.');
     }
     const email = String(formData.get('email') ?? '').trim();
     input = { kunde, leistung, betragEur, ...(email ? { email } : {}) };
   } else if (skill.key === 'rechnung_erstellen') {
     const kunde = String(formData.get('kunde') ?? '').trim();
-    if (!kunde) throw new Error('Kunde ist erforderlich.');
+    if (!kunde) throw new Error('Customer is required.');
     // Eine Position pro Zeile: "Bezeichnung; Betrag" (Komma oder Punkt).
     const zeilen = String(formData.get('positionen') ?? '')
       .split('\n')
       .map((z) => z.trim())
       .filter(Boolean);
-    if (zeilen.length === 0) throw new Error('Mindestens eine Position ist erforderlich.');
+    if (zeilen.length === 0) throw new Error('At least one line item is required.');
     const positionen = zeilen.map((zeile, i) => {
       const [bezeichnung, betragRaw] = zeile.split(';').map((s) => s.trim());
       const betragEur = Number.parseFloat(String(betragRaw ?? '').replace(',', '.'));
       if (!bezeichnung || !Number.isFinite(betragEur) || betragEur <= 0) {
-        throw new Error(`Position ${i + 1}: erwartet "Bezeichnung; Betrag" mit positivem Betrag.`);
+        throw new Error(`Line item ${i + 1}: expected "description; amount" with a positive amount.`);
       }
       return { bezeichnung, betragEur };
     });
@@ -74,10 +74,10 @@ export async function startSkillRun(formData: FormData) {
     try {
       parsed = JSON.parse(raw);
     } catch {
-      throw new Error('Input muss gültiges JSON sein.');
+      throw new Error('Input must be valid JSON.');
     }
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-      throw new Error('Input muss ein JSON-Objekt sein.');
+      throw new Error('Input must be a JSON object.');
     }
     input = parsed as SkillJson;
   }

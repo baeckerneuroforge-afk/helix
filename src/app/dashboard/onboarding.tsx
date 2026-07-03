@@ -1,8 +1,8 @@
-// "Erste Schritte" — geführter Erststart auf der Übersicht. Rein serverseitig:
-// der Fortschritt wird aus echten Daten abgeleitet (kein eigener Zustand,
-// nichts zu migrieren) und die Karte verschwindet von selbst, sobald alle
-// Schritte erledigt sind.
+// "Getting started" — guided first run on the overview. Purely server-side:
+// progress is derived from real data (no extra state, nothing to migrate) and
+// the card disappears by itself once every step is done.
 import Link from 'next/link';
+import type { Dictionary } from '@/lib/i18n';
 
 export interface OnboardingProgress {
   hasDocument: boolean;
@@ -23,37 +23,43 @@ export function onboardingComplete(p: OnboardingProgress): boolean {
   return p.hasDocument && p.hasChatMessage && p.hasRun && p.hasCompanyProfile;
 }
 
-export function OnboardingCard({ progress }: { progress: OnboardingProgress }) {
+export function OnboardingCard({
+  progress,
+  dict,
+}: {
+  progress: OnboardingProgress;
+  dict: Dictionary['onboarding'];
+}) {
   if (onboardingComplete(progress)) return null;
 
   const steps: Step[] = [
     {
       done: progress.hasDocument,
-      title: 'Wissen hochladen',
-      hint: 'PDF, DOCX, Markdown oder Text — daraus beantwortet ergane Fragen mit Quellenangabe.',
+      title: dict.steps.uploadTitle,
+      hint: dict.steps.uploadHint,
       href: '/dashboard/knowledge',
-      cta: 'Zur Wissensbasis',
+      cta: dict.steps.uploadCta,
     },
     {
       done: progress.hasChatMessage,
-      title: 'Erste Frage stellen',
-      hint: 'Der Chat antwortet nur aus Ihrem geprüften Wissen — oder sagt ehrlich, dass er es nicht weiß.',
+      title: dict.steps.chatTitle,
+      hint: dict.steps.chatHint,
       href: '/dashboard/chat',
-      cta: 'Zum Chat',
+      cta: dict.steps.chatCta,
     },
     {
       done: progress.hasRun,
-      title: 'Skill ausprobieren',
-      hint: 'Z. B. ein Angebot entwerfen — alles mit externer Wirkung wartet auf Ihre Freigabe.',
+      title: dict.steps.skillTitle,
+      hint: dict.steps.skillHint,
       href: '/dashboard/skills',
-      cta: 'Zu den Skills',
+      cta: dict.steps.skillCta,
     },
     {
       done: progress.hasCompanyProfile,
-      title: 'Firmendaten hinterlegen',
-      hint: 'Name, Anschrift, USt-IdNr., Bank — erscheinen als Briefkopf auf Angebots- und Rechnungs-PDFs.',
-      href: '/dashboard/settings?tab=firma',
-      cta: 'Zu den Einstellungen',
+      title: dict.steps.companyTitle,
+      hint: dict.steps.companyHint,
+      href: '/dashboard/settings?tab=company',
+      cta: dict.steps.companyCta,
     },
   ];
   const remaining = steps.filter((s) => !s.done).length;
@@ -61,9 +67,9 @@ export function OnboardingCard({ progress }: { progress: OnboardingProgress }) {
   return (
     <section className="card onboarding">
       <h2>
-        Erste Schritte{' '}
+        {dict.title}{' '}
         <span className="muted onboarding-count">
-          {steps.length - remaining}/{steps.length} erledigt
+          {dict.doneCount(steps.length - remaining, steps.length)}
         </span>
       </h2>
       <ol className="onboarding-steps">

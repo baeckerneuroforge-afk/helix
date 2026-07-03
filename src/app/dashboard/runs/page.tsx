@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { requireTenant } from '@/lib/auth-context';
+import { getI18n } from '@/lib/i18n/server';
 import { withTenant } from '@/lib/tenant';
 import { RunStatusChip, amountOfInput, formatDateTime, formatEuro } from '../ui';
 
@@ -7,6 +8,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function RunsPage() {
   const { orgId } = await requireTenant();
+  const { locale, t } = await getI18n();
 
   // select: the list never shows `result` (can be a large JSON blob) — don't
   // pull 100 of them over the wire for a table of four columns.
@@ -26,20 +28,20 @@ export default async function RunsPage() {
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
               <path d="M12 22a10 10 0 1 0-10-10M2 22l5-5M2 17v5h5" />
             </svg>
-            <strong>Noch keine Ausführungen</strong>
+            <strong>{t.runs.emptyTitle}</strong>
             <span>
-              Starte einen Skill unter <Link href="/dashboard/skills">Skills</Link> — jeder Lauf
-              erscheint hier mit Status und Schritt-Timeline.
+              {t.runs.emptyHintPrefix} <Link href="/dashboard/skills">{t.nav.skills}</Link>{' '}
+              {t.runs.emptyHintSuffix}
             </span>
           </div>
         ) : (
           <table className="table">
             <thead>
               <tr>
-                <th>Skill</th>
-                <th>Betrag</th>
-                <th>Status</th>
-                <th>Gestartet am</th>
+                <th>{t.common.skill}</th>
+                <th>{t.common.amount}</th>
+                <th>{t.common.status}</th>
+                <th>{t.runs.startedAt}</th>
               </tr>
             </thead>
             <tbody>
@@ -53,12 +55,12 @@ export default async function RunsPage() {
                       </Link>
                       <div className="row-meta mono">{run.id.slice(0, 8)}…</div>
                     </td>
-                    <td className="mono">{amount !== null ? formatEuro(amount) : '—'}</td>
+                    <td className="mono">{amount !== null ? formatEuro(amount, locale) : '—'}</td>
                     <td>
-                      <RunStatusChip status={run.status} />
+                      <RunStatusChip status={run.status} locale={locale} />
                     </td>
                     <td className="mono row-meta" style={{ whiteSpace: 'nowrap' }}>
-                      {formatDateTime(run.createdAt)}
+                      {formatDateTime(run.createdAt, locale)}
                     </td>
                   </tr>
                 );

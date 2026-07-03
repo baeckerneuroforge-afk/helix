@@ -68,20 +68,20 @@ export interface UploadFileResult {
 export async function ingestUpload(formData: FormData): Promise<UploadFileResult> {
   const file = formData.get('file');
   if (!(file instanceof File) || file.size === 0) {
-    return { fileName: 'unbekannt', ok: false, error: 'Keine Datei übermittelt.' };
+    return { fileName: 'unknown', ok: false, error: 'No file submitted.' };
   }
   const fileName = file.name;
 
   try {
     if (file.size > MAX_FILE_BYTES) {
       throw new ExtractionError(
-        `Datei zu groß (${(file.size / 1024 / 1024).toFixed(1)} MB) — Limit sind 20 MB.`,
+        `File too large (${(file.size / 1024 / 1024).toFixed(1)} MB) — the limit is 20 MB.`,
       );
     }
 
     const rawVisibility = String(formData.get('visibility') ?? 'open');
     const visibility = VISIBILITIES.find((v) => v === rawVisibility);
-    if (!visibility) throw new ExtractionError('Ungültige Sichtbarkeit.');
+    if (!visibility) throw new ExtractionError('Invalid visibility.');
 
     const { text, meta } = await extractText({
       filename: fileName,
@@ -114,12 +114,12 @@ export async function ingestUpload(formData: FormData): Promise<UploadFileResult
       wordCount: meta.wordCount,
     };
   } catch (err) {
-    // ExtractionError carries a user-readable German message; anything else
+    // ExtractionError carries a user-readable message; anything else
     // gets a generic one (no stack traces to the client).
     const message =
       err instanceof ExtractionError
         ? err.message
-        : 'Ingestion fehlgeschlagen — bitte erneut versuchen.';
+        : 'Ingestion failed — please try again.';
     if (!(err instanceof ExtractionError)) console.error('ingestUpload failed:', err);
     return { fileName, ok: false, error: message };
   }
@@ -135,12 +135,12 @@ export async function reingestUpload(formData: FormData): Promise<UploadFileResu
   const documentId = String(formData.get('documentId') ?? '').trim();
   const file = formData.get('file');
   if (!documentId || !(file instanceof File) || file.size === 0) {
-    return { fileName: 'unbekannt', ok: false, error: 'Dokument-ID und Datei sind erforderlich.' };
+    return { fileName: 'unknown', ok: false, error: 'Document id and file are required.' };
   }
 
   try {
     if (file.size > MAX_FILE_BYTES) {
-      throw new ExtractionError('Datei zu groß — Limit sind 20 MB.');
+      throw new ExtractionError('File too large — the limit is 20 MB.');
     }
     const { text, meta } = await extractText({
       filename: file.name,
@@ -166,7 +166,7 @@ export async function reingestUpload(formData: FormData): Promise<UploadFileResu
     const message =
       err instanceof ExtractionError
         ? err.message
-        : 'Neue Version fehlgeschlagen — bitte erneut versuchen.';
+        : 'New version failed — please try again.';
     if (!(err instanceof ExtractionError)) console.error('reingestUpload failed:', err);
     return { fileName: file.name, ok: false, error: message };
   }
@@ -178,7 +178,7 @@ export async function reingestUpload(formData: FormData): Promise<UploadFileResu
  */
 export async function removeDocument(formData: FormData) {
   const documentId = String(formData.get('documentId') ?? '').trim();
-  if (!documentId) throw new Error('documentId ist erforderlich.');
+  if (!documentId) throw new Error('documentId is required.');
 
   const { orgId, userId, clerkOrgId, orgSlug, role } = await requireTenant();
   // Mirror the membership first — deleteDocument's admin gate reads it.
