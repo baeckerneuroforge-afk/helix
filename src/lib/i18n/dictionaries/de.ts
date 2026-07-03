@@ -346,11 +346,47 @@ export const de: Dictionary = {
       approvals: 'Freigabe-Regeln',
       visibility: 'Wissens-Sichtbarkeit',
       members: 'Mitglieder & Rollen',
+      governance: 'Governance-Vorlagen',
       company: 'Firmendaten',
       value: 'Wert-Annahmen',
       slack: 'Slack',
       language: 'Sprache',
       data: 'Daten & Löschung',
+    },
+    governance: {
+      presetsTitle: 'Branchen-Presets',
+      presetsHint:
+        'Ein Klick setzt sinnvolle Defaults für Freigabe-Regeln und Wissens-Sichtbarkeit — statt jede Regel einzeln zu konfigurieren. Alles bleibt danach in den anderen Tabs anpassbar.',
+      presetNames: {
+        kanzlei: 'Kanzlei / Steuerberatung',
+        gesundheitswesen: 'Gesundheitswesen',
+        handwerk: 'Handwerk / KMU',
+      } as Record<string, string>,
+      presetDescriptions: {
+        kanzlei:
+          'Strenge Freigaben mit Vier-Augen bei Geld: Belege ab 50 €, jede Rechnung braucht einen Admin, Angebote einen Lead. Member sehen nur offene Dokumente; vertraulich bleibt Admin-only.',
+        gesundheitswesen:
+          'Maximal strikt: Jeder Skill-Lauf braucht eine Admin-Freigabe, alles jenseits offener Dokumente ist Admin-only — personenbezogene Daten bleiben unter Verschluss.',
+        handwerk:
+          'Pragmatisch: Leads geben Belege ab 250 € und Rechnungen ab 1.000 € frei, Angebote gehen ohne Pause raus. Breiter Wissenszugriff — Geld-Skills bleiben abgesichert.',
+      } as Record<string, string>,
+      applyCta: 'Preset anwenden',
+      confirmOverwrite:
+        'Ich verstehe: Das überschreibt die bestehenden Freigabe-Regeln und die Sichtbarkeits-Matrix.',
+      moneyFailsafeNote:
+        'Kein Preset und kein Import kann Freigaben für Geld-Skills abschalten — solche Konfigurationen werden fail-closed korrigiert und auditiert.',
+      exportTitle: 'Governance exportieren',
+      exportHint:
+        'Lädt die aktuellen Freigabe-Regeln und die Sichtbarkeits-Matrix als JSON herunter — portabel, ohne Secrets, ohne Org-Kennungen. Dieselbe Datei lässt sich hier oder in einer anderen Organisation importieren.',
+      exportCta: 'JSON herunterladen',
+      importTitle: 'Governance importieren',
+      importHint:
+        'Exportiertes JSON einfügen (oder Datei wählen). Es wird zuerst validiert — Struktur, Wertebereiche und der Geld-Failsafe — und dann in einer Transaktion angewendet.',
+      importPlaceholder: '{"format":"helix-governance","version":1,…}',
+      importFileLabel: 'oder Datei wählen:',
+      importCta: 'Validieren & anwenden',
+      appliesTo: (policies: number, grants: number) =>
+        `${policies} Freigabe-Regeln · ${grants} Sichtbarkeits-Grants`,
     },
     notifyTitle: 'Benachrichtigung bei wartenden Freigaben',
     notifyHint:

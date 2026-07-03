@@ -19,10 +19,29 @@
 // change writes audit 'policy.changed' with { old, new } in detail.
 import type { ApprovalMode, ApprovalPolicy, DocumentVisibility, Membership, Role } from '@prisma/client';
 import { logAudit } from '../audit';
-import { withTenant, type Tx } from '../tenant';
+import { withTenant } from '../tenant';
 
-/** Roles allowed to administer policies. */
-const ADMIN_ROLES: Role[] = ['admin', 'owner'];
+import { ADMIN_ROLES, getMemberRole, requireAdmin } from './admin';
+
+export { getMemberRole, requireAdmin };
+export { POLICY_PRESETS, getPolicyPreset } from './presets';
+export type { PolicyPreset, PresetApprovalPolicy, PresetVisibilityGrant } from './presets';
+export {
+  applyGovernanceConfig,
+  applyPolicyPreset,
+  exportGovernance,
+  importGovernance,
+  parseGovernanceConfig,
+  GOVERNANCE_FORMAT,
+  GOVERNANCE_VERSION,
+} from './governance';
+export type {
+  ApplyGovernanceResult,
+  GovernanceApprovalPolicy,
+  GovernanceConfig,
+  GovernanceGrant,
+} from './governance';
+
 /** Roles a policy may demand for approvals. */
 const APPROVER_ROLES: Role[] = ['admin', 'lead'];
 /** Visibility levels that are grantable ('open' needs no grant). */
@@ -32,23 +51,6 @@ const GRANTABLE_LEVELS: DocumentVisibility[] = ['restricted', 'confidential'];
  * 'owner' always qualify; otherwise the roles must match exactly. */
 export function roleSatisfies(deciderRole: Role, required: Role): boolean {
   return ADMIN_ROLES.includes(deciderRole) || deciderRole === required;
-}
-
-/** Membership lookup inside the CALLER's tenant transaction. Fail-closed: no
- * membership row ⇒ null (treated as "no role" by every consumer). */
-export async function getMemberRole(tx: Tx, userId: string): Promise<Role | null> {
-  const membership = await tx.membership.findFirst({ where: { userId } });
-  return membership?.role ?? null;
-}
-
-async function requireAdmin(tx: Tx, orgId: string, actorUserId: string): Promise<Role> {
-  const role = await getMemberRole(tx, actorUserId);
-  if (!role || !ADMIN_ROLES.includes(role)) {
-    throw new Error(
-      `policies: user ${JSON.stringify(actorUserId)} (role: ${role ?? 'none'}) may not change policies — admin required.`,
-    );
-  }
-  return role;
 }
 
 // -----------------------------------------------------------------------------

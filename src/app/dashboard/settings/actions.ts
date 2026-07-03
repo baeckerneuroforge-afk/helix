@@ -10,6 +10,8 @@ import { requireTenant } from '@/lib/auth-context';
 import { ensureOrgAndMembership } from '@/lib/org';
 import { setCompanyProfile, setOrgLocale } from '@/lib/company';
 import {
+  applyPolicyPreset,
+  importGovernance,
   setApprovalNotifyEmail,
   setApprovalPolicy,
   setMembershipRole,
@@ -102,6 +104,48 @@ export async function saveMembershipRole(formData: FormData) {
   await setMembershipRole({ orgId, actorUserId: userId, userId: targetUserId, role });
 
   revalidatePath('/dashboard/settings');
+}
+
+// -----------------------------------------------------------------------------
+// Governance presets & import (admin gate + failsafe + audit live in
+// src/lib/policies/governance.ts; export is a GET route → governance/route.ts)
+// -----------------------------------------------------------------------------
+
+export async function applyGovernancePreset(formData: FormData) {
+  const presetKey = String(formData.get('presetKey') ?? '');
+  // The confirm checkbox is required in the UI; enforce it server-side too —
+  // applying a preset overwrites existing approval rules and the grant matrix.
+  if (formData.get('confirmOverwrite') !== 'on') {
+    throw new Error('Please confirm that existing governance settings will be overwritten.');
+  }
+
+  const { orgId, userId } = await requireTenantWithMembership();
+  await applyPolicyPreset({ orgId, actorUserId: userId, presetKey });
+
+  revalidatePath('/dashboard/settings');
+  revalidatePath('/dashboard/skills');
+}
+
+export async function importGovernanceConfig(formData: FormData) {
+  // File upload wins over the textarea; both feed the same validator.
+  let json = '';
+  const file = formData.get('governanceFile');
+  if (file instanceof File && file.size > 0) {
+    if (file.size > 256 * 1024) throw new Error('Import failed: file too large (max 256 KB).');
+    json = await file.text();
+  } else {
+    json = String(formData.get('governanceJson') ?? '');
+  }
+  if (!json.trim()) throw new Error('Import failed: paste JSON or choose a file.');
+  if (formData.get('confirmOverwrite') !== 'on') {
+    throw new Error('Please confirm that existing governance settings will be overwritten.');
+  }
+
+  const { orgId, userId } = await requireTenantWithMembership();
+  await importGovernance({ orgId, actorUserId: userId, json });
+
+  revalidatePath('/dashboard/settings');
+  revalidatePath('/dashboard/skills');
 }
 
 // -----------------------------------------------------------------------------

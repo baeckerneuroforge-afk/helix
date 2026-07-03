@@ -344,11 +344,47 @@ export const en = {
       approvals: 'Approval rules',
       visibility: 'Knowledge visibility',
       members: 'Members & roles',
+      governance: 'Governance templates',
       company: 'Company details',
       value: 'Value assumptions',
       slack: 'Slack',
       language: 'Language',
       data: 'Data & deletion',
+    },
+    governance: {
+      presetsTitle: 'Industry presets',
+      presetsHint:
+        'One click sets sensible defaults for approval rules and knowledge visibility — instead of configuring every rule by hand. Everything stays adjustable afterwards in the other tabs.',
+      presetNames: {
+        kanzlei: 'Law / tax firm',
+        gesundheitswesen: 'Healthcare',
+        handwerk: 'Trades / SMB',
+      } as Record<string, string>,
+      presetDescriptions: {
+        kanzlei:
+          'Strict approvals with four-eyes on money: receipts from €50 and every invoice need an admin, quotes need a lead. Members see only open documents; confidential stays admin-only.',
+        gesundheitswesen:
+          'Maximally strict: every skill run needs an admin approval, and everything beyond open documents is admin-only — personal data stays locked down.',
+        handwerk:
+          'Pragmatic: leads approve receipts from €250 and invoices from €1,000, quotes go out without a pause. Broad knowledge access — money skills stay guarded.',
+      } as Record<string, string>,
+      applyCta: 'Apply preset',
+      confirmOverwrite:
+        'I understand: this overwrites the existing approval rules and the visibility matrix.',
+      moneyFailsafeNote:
+        'No preset and no import can disable approvals for money skills — such configs are corrected fail-closed and audited.',
+      exportTitle: 'Export governance',
+      exportHint:
+        'Download the current approval rules and visibility matrix as JSON — portable, without secrets, without anything org-identifying. The same file can be imported here or in another organization.',
+      exportCta: 'Download JSON',
+      importTitle: 'Import governance',
+      importHint:
+        'Paste an exported JSON (or choose a file). It is validated first — structure, value ranges, and the money failsafe — and then applied in one transaction.',
+      importPlaceholder: '{"format":"helix-governance","version":1,…}',
+      importFileLabel: 'or choose a file:',
+      importCta: 'Validate & apply',
+      appliesTo: (policies: number, grants: number) =>
+        `${policies} approval rules · ${grants} visibility grants`,
     },
     notifyTitle: 'Notification for pending approvals',
     notifyHint:
