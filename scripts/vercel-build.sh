@@ -7,6 +7,12 @@
 # Preview deploys never touch the database.
 set -eu
 
+# The Neon↔Vercel integration provides the unpooled (direct) connection as
+# DATABASE_URL_UNPOOLED — map it onto the name the Prisma schema expects.
+if [ -z "${DIRECT_DATABASE_URL:-}" ] && [ -n "${DATABASE_URL_UNPOOLED:-}" ]; then
+  export DIRECT_DATABASE_URL="$DATABASE_URL_UNPOOLED"
+fi
+
 if [ "${VERCEL_ENV:-}" = "production" ]; then
   if [ -n "${DIRECT_DATABASE_URL:-}" ]; then
     echo "vercel-build: production deploy — applying Prisma migrations…"
