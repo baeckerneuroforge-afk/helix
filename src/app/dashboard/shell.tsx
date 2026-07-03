@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { UserButton } from '@clerk/nextjs';
+import { HelixMark } from '@/app/brand';
 import type { Dictionary } from '@/lib/i18n';
 import { useDict } from '@/lib/i18n/client';
 
@@ -141,8 +142,10 @@ export function DashboardShell({
     <div className="dash">
       <aside className="sidebar">
         <Link className="wordmark" href="/dashboard">
-          <span className="text">ergane</span>
-          <span className="dot">.</span>
+          <HelixMark size={24} variant="dark" />
+          <span className="text">
+            helix<span className="dot">.ai</span>
+          </span>
         </Link>
         <nav className="nav">
           {SECTIONS.map((section) => {

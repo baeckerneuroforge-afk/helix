@@ -185,7 +185,7 @@ describe('organizationMembership.deleted', () => {
         user: { id: 'U_CS_LEAD' },
         channel: { id: 'C' },
         message: { ts: '1.2' },
-        actions: [{ action_id: 'ergane_approve', value: handle.runId }],
+        actions: [{ action_id: 'helix_approve', value: handle.runId }],
       }),
     }).toString();
     const slackRes = await handleSlackInteractions(

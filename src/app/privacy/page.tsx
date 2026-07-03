@@ -6,7 +6,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { LegalPlaceholder as P, PublicShell } from '../public-shell';
 
-export const metadata: Metadata = { title: 'Privacy Policy — ergane' };
+export const metadata: Metadata = { title: 'Privacy Policy — helix.ai' };
 
 const PROCESSORS: Array<[string, string, string]> = [
   ['Vercel Inc.', 'Hosting & delivery of the application', 'USA (EU SCCs)'],
@@ -95,7 +95,7 @@ export default function PrivacyPage() {
 
         <h2>6. Cookies & tracking</h2>
         <p>
-          ergane uses only technically necessary cookies (session/sign-in via Clerk and the
+          helix.ai uses only technically necessary cookies (session/sign-in via Clerk and the
           language preference). There is no ad tracking and there are no analytics cookies.
         </p>
       </article>

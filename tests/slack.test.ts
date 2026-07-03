@@ -103,7 +103,7 @@ function commandRequest(
   triggerId?: string,
 ): Request {
   const body = new URLSearchParams({
-    command: '/ergane',
+    command: '/helix',
     team_id: teamId,
     user_id: slackUserId,
     channel_id: 'C_TEST',
@@ -116,7 +116,7 @@ function commandRequest(
 function interactionRequest(
   teamId: string,
   slackUserId: string,
-  actionId: 'ergane_approve' | 'ergane_reject',
+  actionId: 'helix_approve' | 'helix_reject',
   runId: string,
   triggerId?: string,
 ): Request {
@@ -202,7 +202,7 @@ async function startGuardedRun(): Promise<string> {
   const buttons =
     (withButtons?.blocks as Array<{ elements?: Array<{ action_id: string; value: string }> }>)
       ?.find((b) => Array.isArray(b.elements))?.elements ?? [];
-  const approveButton = buttons.find((b) => b.action_id === 'ergane_approve');
+  const approveButton = buttons.find((b) => b.action_id === 'helix_approve');
   expect(approveButton?.value).toBeTruthy();
   posted = []; // the tests after this only care about messages caused by clicks
   return approveButton!.value;
@@ -298,7 +298,7 @@ describe('signature verification (gate 1 — before ANYTHING is processed)', () 
     const timestamp = Math.floor(Date.now() / 1000);
     const signatureForOtherBody = computeSlackSignature(SECRET, timestamp, '{"type":"benign"}');
     const res = await handleSlackCommands(
-      signedRequest('command=%2Fergane&text=frage+x&team_id=' + TEAM_A, {
+      signedRequest('command=%2Fhelix&text=frage+x&team_id=' + TEAM_A, {
         contentType: 'application/x-www-form-urlencoded',
         timestamp,
         signature: signatureForOtherBody,
@@ -327,7 +327,7 @@ describe('team → org mapping (gate 2 — no mapping ⇒ rejected)', () => {
     expect(commands.status).toBe(403);
 
     const interactions = await handleSlackInteractions(
-      interactionRequest(TEAM_UNKNOWN, LEAD.slackId, 'ergane_approve', ORG_A),
+      interactionRequest(TEAM_UNKNOWN, LEAD.slackId, 'helix_approve', ORG_A),
     );
     expect(interactions.status).toBe(403);
 
@@ -419,7 +419,7 @@ describe('slack user → role (gate 3) and disclosure via Slack', () => {
 
 // --- skills via slash command ------------------------------------------------------
 
-describe('/ergane skill — start runs from Slack', () => {
+describe('/helix skill — start runs from Slack', () => {
   it('an UNLINKED slack user can NOT start a skill (no run is created)', async () => {
     const res = await handleSlackCommands(
       commandRequest(TEAM_A, STRANGER_SLACK_ID, 'skill beleg_kontieren {"beschreibung":"x","betragEur":10}'),
@@ -459,7 +459,7 @@ describe('approvals via Slack buttons (role gate enforced by the engine)', () =>
     const runId = await startGuardedRun();
 
     const res = await handleSlackInteractions(
-      interactionRequest(TEAM_A, STRANGER_SLACK_ID, 'ergane_approve', runId),
+      interactionRequest(TEAM_A, STRANGER_SLACK_ID, 'helix_approve', runId),
     );
     // Unlinked ⇒ rejected synchronously (no work exists to defer).
     const body = (await res.json()) as { response_type: string };
@@ -479,7 +479,7 @@ describe('approvals via Slack buttons (role gate enforced by the engine)', () =>
     const runId = await startGuardedRun();
 
     const res = await handleSlackInteractions(
-      interactionRequest(TEAM_A, MEMBER.slackId, 'ergane_approve', runId),
+      interactionRequest(TEAM_A, MEMBER.slackId, 'helix_approve', runId),
     );
     expect(res.status).toBe(200); // ack first …
     await drainDeferredWork(); // … the (refused) decision runs afterwards
@@ -498,7 +498,7 @@ describe('approvals via Slack buttons (role gate enforced by the engine)', () =>
     const runId = await startGuardedRun();
 
     const res = await handleSlackInteractions(
-      interactionRequest(TEAM_A, LEAD.slackId, 'ergane_approve', runId),
+      interactionRequest(TEAM_A, LEAD.slackId, 'helix_approve', runId),
     );
     expect(res.status).toBe(200); // ack first …
     expect(posted).toHaveLength(0); // … the outcome is not delivered yet (deferred)
@@ -522,7 +522,7 @@ describe('approvals via Slack buttons (role gate enforced by the engine)', () =>
     await seedPolicy();
     const runId = await startGuardedRun();
 
-    await handleSlackInteractions(interactionRequest(TEAM_A, LEAD.slackId, 'ergane_reject', runId));
+    await handleSlackInteractions(interactionRequest(TEAM_A, LEAD.slackId, 'helix_reject', runId));
     await drainDeferredWork();
     expect(await runStatus(ORG_A, runId)).toBe('rejected');
     const steps = await withTenant(ORG_A, (tx) => tx.skillStep.findMany({ where: { runId } }));
@@ -542,7 +542,7 @@ describe('approvals via Slack buttons (role gate enforced by the engine)', () =>
     // Team A (→ org A) clicking approve on B's runId: RLS makes the run
     // invisible ⇒ engine throws "not found" ⇒ ephemeral error, B untouched.
     const res = await handleSlackInteractions(
-      interactionRequest(TEAM_A, LEAD.slackId, 'ergane_approve', handle.runId),
+      interactionRequest(TEAM_A, LEAD.slackId, 'helix_approve', handle.runId),
     );
     expect(res.status).toBe(200);
     await drainDeferredWork();

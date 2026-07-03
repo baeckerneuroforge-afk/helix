@@ -1,8 +1,8 @@
 {
-  "name": "ergane",
+  "name": "helix",
   "version": "0.1.0",
   "private": true,
-  "description": "ergane — GDPR-native, multi-tenant B2B foundation. Tenant isolation is enforced by the database (Postgres RLS + FORCE), not by application-code discipline.",
+  "description": "helix.ai — GDPR-native, multi-tenant B2B foundation. Tenant isolation is enforced by the database (Postgres RLS + FORCE), not by application-code discipline.",
   "type": "module",
   "engines": {
     "node": "24.x"

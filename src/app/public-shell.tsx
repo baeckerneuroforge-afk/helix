@@ -5,6 +5,7 @@
 // je Sprache auf die passende Fassung der Rechtstexte.
 import Link from 'next/link';
 import { getI18n } from '@/lib/i18n/server';
+import { HelixMark } from './brand';
 import { LanguageSwitcher } from './language-switcher';
 
 export async function PublicShell({ children }: { children: React.ReactNode }) {
@@ -18,7 +19,10 @@ export async function PublicShell({ children }: { children: React.ReactNode }) {
     <div className="public-page">
       <header className="public-header">
         <Link href="/" className="public-logo">
-          ergane<span className="dot">.</span>
+          <HelixMark size={26} variant="light" />
+          <span>
+            helix<span className="dot">.ai</span>
+          </span>
         </Link>
         <nav style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
           <LanguageSwitcher />
@@ -29,7 +33,7 @@ export async function PublicShell({ children }: { children: React.ReactNode }) {
       </header>
       <main className="public-main">{children}</main>
       <footer className="public-footer">
-        <span className="muted">© {new Date().getFullYear()} ergane</span>
+        <span className="muted">© {new Date().getFullYear()} helix.ai</span>
         <nav className="public-footer-links">
           <Link href={legal.imprint}>{t.publicShell.imprint}</Link>
           <Link href={legal.privacy}>{t.publicShell.privacy}</Link>

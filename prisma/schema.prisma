@@ -1,4 +1,4 @@
-// ergane — Prisma schema.
+// helix.ai — Prisma schema.
 //
 // `url`       → DATABASE_URL        → app_user (runtime + Prisma Client + tests).
 // `directUrl` → DIRECT_DATABASE_URL → owner    (used by `prisma migrate`/`db`).
@@ -307,7 +307,7 @@ model Membership {
   userId    String   @map("user_id")
   role      Role     @default(member)
   /// 'clerk' = role mirrors Clerk (overwritten on sync); 'local' = set in
-  /// ergane (e.g. 'lead') and never touched by a Clerk sync.
+  /// helix.ai (e.g. 'lead') and never touched by a Clerk sync.
   roleSource String  @default("clerk") @map("role_source")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 

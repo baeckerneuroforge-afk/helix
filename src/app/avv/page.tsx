@@ -5,7 +5,7 @@
 import type { Metadata } from 'next';
 import { LegalPlaceholder as P, PublicShell } from '../public-shell';
 
-export const metadata: Metadata = { title: 'Auftragsverarbeitungsvertrag — ergane' };
+export const metadata: Metadata = { title: 'Auftragsverarbeitungsvertrag — helix.ai' };
 
 const SUBPROCESSORS: Array<[string, string, string]> = [
   ['Vercel Inc.', 'Hosting & Auslieferung der Anwendung', 'USA (EU-SCCs)'],
@@ -30,7 +30,7 @@ export default function AvvPage() {
         <h2>§ 1 Gegenstand und Dauer</h2>
         <p>
           Der Auftragsverarbeiter betreibt für den Verantwortlichen die SaaS-Plattform
-          „ergane“ (Wissensbasis, KI-Chat, Skill-Ausführung mit Freigaben). Die Verarbeitung
+          „helix.ai“ (Wissensbasis, KI-Chat, Skill-Ausführung mit Freigaben). Die Verarbeitung
           beginnt mit Vertragsschluss und endet mit der Löschung der Organisation.
         </p>
 

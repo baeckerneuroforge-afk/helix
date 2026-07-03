@@ -16,9 +16,9 @@ export function isUuid(value: unknown): value is string {
   return typeof value === 'string' && UUID_RE.test(value);
 }
 
-// Stable namespace for ergane org ids. Generated once; never change it, or every
+// Stable namespace for helix.ai org ids (value predates the rebrand — never change it). Generated once; never change it, or every
 // derived org UUID would change. (Itself a valid v4 UUID.)
-const ERGANE_ORG_NAMESPACE = 'b3f1c0de-1a2b-4c3d-8e4f-5a6b7c8d9e0f';
+const HELIX_ORG_NAMESPACE = 'b3f1c0de-1a2b-4c3d-8e4f-5a6b7c8d9e0f';
 
 function hexToBytes(hex: string): Buffer {
   return Buffer.from(hex.replace(/-/g, ''), 'hex');
@@ -36,7 +36,7 @@ function bytesToUuid(buf: Buffer): string {
 }
 
 /** RFC-4122 v5 (SHA-1, name-based) UUID derivation. */
-export function uuidV5(name: string, namespace = ERGANE_ORG_NAMESPACE): string {
+export function uuidV5(name: string, namespace = HELIX_ORG_NAMESPACE): string {
   const ns = hexToBytes(namespace);
   const hash = createHash('sha1')
     .update(ns)

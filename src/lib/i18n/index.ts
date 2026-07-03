@@ -15,7 +15,7 @@ export type Locale = (typeof LOCALES)[number];
 export const DEFAULT_LOCALE: Locale = 'en';
 
 /** Cookie carrying the UI language of THIS browser (not org-wide). */
-export const LOCALE_COOKIE = 'ergane_locale';
+export const LOCALE_COOKIE = 'helix_locale';
 
 export function isLocale(value: unknown): value is Locale {
   return typeof value === 'string' && (LOCALES as readonly string[]).includes(value);

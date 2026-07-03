@@ -1,5 +1,5 @@
 /* ============================================================================
-   ergane Design-System v2 — „Präzisionswerkzeug"
+   helix.ai Design-System v2 — „Präzisionswerkzeug"
    Semantik (Gesetz):
      Stahl-Indigo  = Wissen / liest nur
      Glut-Orange   = Handlung / führt aus
@@ -147,7 +147,8 @@ a { color: var(--indigo); }
 
 .wordmark {
   display: flex;
-  align-items: baseline;
+  align-items: center;
+  gap: 0.5rem;
   color: #fff;
   font-family: var(--font-display, var(--font-sans));
   font-weight: 700;
@@ -1083,6 +1084,9 @@ pre.json {
 }
 
 .public-logo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   font-family: var(--font-display, var(--font-sans));
   font-weight: 700;
   font-size: 1.2rem;

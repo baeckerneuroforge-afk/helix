@@ -1,4 +1,4 @@
-// Slack slash-command endpoint (/ergane). PUBLIC route, signature-verified —
+// Slack slash-command endpoint (/helix). PUBLIC route, signature-verified —
 // see src/lib/slack/handlers.ts.
 import { handleSlackCommands } from '@/lib/slack/handlers';
 

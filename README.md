@@ -1,4 +1,4 @@
-# ergane
+# helix.ai
 
 A **GDPR-native, multi-tenant (B2B) foundation**. Phase 0–1 built the
 tenant-first fundament: tenancy, auth/orgs, RBAC, an append-only audit log, and
@@ -440,7 +440,7 @@ uses the real ones.
 
 ## Skill engine: Guardrail → Freigabe → Audit (Phase 3)
 
-Der Mechanismus, der ergane vom Chatbot zum Company Orchestrator macht:
+Der Mechanismus, der helix vom Chatbot zum Company Orchestrator macht:
 **ausführbare Skills** mit Leitplanke, menschlicher Freigabe und lückenlosem
 Audit. Erster Skill end-to-end: `beleg_kontieren`.
 
@@ -711,7 +711,7 @@ Clerk-Pflicht ausgenommen), aber signatur-authentifiziert:
 | Route | Zweck |
 | --- | --- |
 | `POST /api/slack/events` | Events API: `url_verification`-Challenge, `app_mention` + DM ⇒ Frage → `answerQuestion` → Antwort mit `Quellen:`-Zeile in den Thread (via `chat.postMessage`) |
-| `POST /api/slack/commands` | Slash-Command `/ergane`: `frage <text>` und `skill <key> {json}`; `awaiting_approval` ⇒ Block-Kit-Nachricht mit **Freigeben/Ablehnen**-Buttons |
+| `POST /api/slack/commands` | Slash-Command `/helix`: `frage <text>` und `skill <key> {json}`; `awaiting_approval` ⇒ Block-Kit-Nachricht mit **Freigeben/Ablehnen**-Buttons |
 | `POST /api/slack/interactions` | Button-Klicks: `approve()`/`reject()` mit der gemappten Membership als `decided_by`; unzureichende Rolle/kein Link ⇒ ephemere Fehlermeldung, keine Aktion |
 
 Skill-Runs mit JSON-Argumenten: eine ins JSON geschmuggelte `"rolle"` wird
@@ -807,7 +807,7 @@ Mit echtem Slack-Workspace:
      (+ `message.im` für DMs).
    - *Interactivity & Shortcuts* → Enable, Request URL
      `https://<ngrok>/api/slack/interactions`.
-   - *Slash Commands* → Create: Command `/ergane`, Request URL
+   - *Slash Commands* → Create: Command `/helix`, Request URL
      `https://<ngrok>/api/slack/commands`, Usage-Hint
      `frage <text> | skill <key> {json}`.
 6. **App installieren** (*Install App*), Bot in einen Kanal einladen.
@@ -816,8 +816,8 @@ Mit echtem Slack-Workspace:
    Slack-User-IDs (`U…`, Slack-Profil → „Copy member ID") mit Memberships
    verknüpfen. Nicht gemappte Teams/Nutzer werden abgewiesen bzw. sehen nur
    `open`-Wissen.
-8. **Ausprobieren:** `@ergane <Frage>` im Kanal, `/ergane frage <Frage>`,
-   `/ergane skill beleg_kontieren {"beschreibung":"Lizenz","betragEur":1240}`
+8. **Ausprobieren:** `@helix <Frage>` im Kanal, `/helix frage <Frage>`,
+   `/helix skill beleg_kontieren {"beschreibung":"Lizenz","betragEur":1240}`
    → Freigabe-Buttons im Kanal.
 
 Tests: `tests/slack.test.ts` (Signatur-Gate inkl. Replay-Fenster, Team-Gate,

@@ -4,7 +4,7 @@
 import type { Metadata } from 'next';
 import { LegalPlaceholder as P, PublicShell } from '../public-shell';
 
-export const metadata: Metadata = { title: 'Impressum — ergane' };
+export const metadata: Metadata = { title: 'Impressum — helix.ai' };
 
 export default function ImpressumPage() {
   return (

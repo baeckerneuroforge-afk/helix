@@ -97,7 +97,7 @@ export const en = {
     steps: {
       uploadTitle: 'Upload knowledge',
       uploadHint:
-        'PDF, DOCX, Markdown or text — ergane answers questions from it, with sources.',
+        'PDF, DOCX, Markdown or text — helix answers questions from it, with sources.',
       uploadCta: 'Go to knowledge base',
       chatTitle: 'Ask your first question',
       chatHint:
@@ -399,13 +399,13 @@ export const en = {
 
   selectOrg: {
     title: 'Choose organization',
-    hint: 'ergane is multi-tenant. Choose an organization or create a new one.',
+    hint: 'helix is multi-tenant. Choose an organization or create a new one.',
   },
 
   landing: {
     heroTitle: 'The GDPR-native AI platform for SMBs',
     heroText:
-      'ergane answers questions from your company knowledge with sources and completes tasks with built-in human approval — tenant-isolated at the database level, every action in the audit trail.',
+      'helix answers questions from your company knowledge with sources and completes tasks with built-in human approval — tenant-isolated at the database level, every action in the audit trail.',
     ctaStart: 'Start for free',
     ctaSignIn: 'Sign in',
     features: [

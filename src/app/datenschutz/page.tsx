@@ -4,7 +4,7 @@
 import type { Metadata } from 'next';
 import { LegalPlaceholder as P, PublicShell } from '../public-shell';
 
-export const metadata: Metadata = { title: 'Datenschutzerklärung — ergane' };
+export const metadata: Metadata = { title: 'Datenschutzerklärung — helix.ai' };
 
 const PROCESSORS: Array<[string, string, string]> = [
   ['Vercel Inc.', 'Hosting & Auslieferung der Anwendung', 'USA (EU-SCCs)'],
@@ -89,7 +89,7 @@ export default function DatenschutzPage() {
 
         <h2>6. Cookies & Tracking</h2>
         <p>
-          ergane setzt ausschließlich technisch notwendige Cookies (Sitzung/Anmeldung über
+          helix.ai setzt ausschließlich technisch notwendige Cookies (Sitzung/Anmeldung über
           Clerk). Es gibt kein Werbe-Tracking und keine Analyse-Cookies.
         </p>
       </article>

@@ -55,7 +55,7 @@ let posted: SlackOutgoingMessage[] = [];
 
 function commandRequest(teamId: string, text: string, triggerId: string, ip = '10.0.0.1'): Request {
   const body = new URLSearchParams({
-    command: '/ergane', team_id: teamId, user_id: 'U_SP', channel_id: 'C_SP',
+    command: '/helix', team_id: teamId, user_id: 'U_SP', channel_id: 'C_SP',
     trigger_id: triggerId, text,
   }).toString();
   const ts = Math.floor(Date.now() / 1000);
