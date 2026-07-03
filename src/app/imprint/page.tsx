@@ -5,7 +5,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { LegalPlaceholder as P, PublicShell } from '../public-shell';
 
-export const metadata: Metadata = { title: 'Imprint — ergane' };
+export const metadata: Metadata = { title: 'Imprint — helix.ai' };
 
 export default function ImprintPage() {
   return (

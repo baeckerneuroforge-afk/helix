@@ -10,7 +10,7 @@
 //   0. Sicherheits-Gates: ungültige Signatur ⇒ 401, fremdes Team ⇒ 403
 //   1. Frage via @mention → SOFORT "ACK 200", DANACH die Antwort mit
 //      kanonischer "Quellen:"-Zeile im Thread (ack-then-work, 3-Sekunden-Regel)
-//   2. /ergane skill … → ACK, dann awaiting_approval-Nachricht mit
+//   2. /helix skill … → ACK, dann awaiting_approval-Nachricht mit
 //      Freigeben/Ablehnen-Buttons; dieselbe trigger_id ein zweites Mal ⇒
 //      Duplikat, KEIN zweiter Run (Idempotenz via slack_processed_events)
 //   3. Button-Klicks: unverlinkter Nutzer und member werden abgewiesen
@@ -41,7 +41,7 @@ import { setSlackPoster, type SlackOutgoingMessage } from '../src/lib/slack/clie
 import { drainDeferredWork } from '../src/lib/slack/defer';
 
 const DEMO_ORG = '33333333-3333-4333-8333-333333333333';
-const TEAM = 'T_DEMO_ERGANE';
+const TEAM = 'T_DEMO_HELIX';
 const LEAD = { userId: 'demo-lead-lena', slackId: 'U_LEAD_LENA' };
 const MEMBER = { userId: 'demo-member-max', slackId: 'U_MEMBER_MAX' };
 const STRANGER = 'U_FREMD_FRANZI'; // nicht verlinkt
@@ -72,7 +72,7 @@ function mentionEvent(teamId: string, slackUserId: string, text: string): Reques
 
 function command(slackUserId: string, text: string, triggerId: string): Request {
   const body = new URLSearchParams({
-    command: '/ergane',
+    command: '/helix',
     team_id: TEAM,
     user_id: slackUserId,
     channel_id: 'C_DEMO',
@@ -183,7 +183,7 @@ async function main() {
 
   // ── 1) Frage via @mention → ACK zuerst, Antwort danach ─────────────────────
   console.log('\n── 1) Frage via @mention (Events API, ack-then-work) ──');
-  console.log(`   💬 ${LEAD.slackId}: "@ergane Werden Bahnfahrten zweiter Klasse erstattet?"`);
+  console.log(`   💬 ${LEAD.slackId}: "@helix Werden Bahnfahrten zweiter Klasse erstattet?"`);
   const events = await handleSlackEvents(
     mentionEvent(TEAM, LEAD.slackId, '<@UBOT> Werden Bahnfahrten zweiter Klasse erstattet?'),
   );
@@ -195,8 +195,8 @@ async function main() {
     throw new Error('DEMO FAILED: Antwort ohne kanonische Quellen-Zeile.');
   }
 
-  // ── 2) /ergane skill → ACK, dann Buttons; Duplikat wird verschluckt ────────
-  console.log('\n── 2) /ergane skill beleg_kontieren (1.240 €) ──');
+  // ── 2) /helix skill → ACK, dann Buttons; Duplikat wird verschluckt ────────
+  console.log('\n── 2) /helix skill beleg_kontieren (1.240 €) ──');
   const cmdRes = await handleSlackCommands(
     command(MEMBER.slackId, 'skill beleg_kontieren {"beschreibung":"Softwarelizenz Jahresvertrag","betragEur":1240}', 'trig_demo_skill_1'),
   );
@@ -207,7 +207,7 @@ async function main() {
   const buttons =
     (withButtons?.blocks as Array<{ elements?: Array<{ action_id: string; value: string; text: { text: string } }> }>)
       ?.find((b) => Array.isArray(b.elements))?.elements ?? [];
-  const runId = buttons.find((b) => b.action_id === 'ergane_approve')?.value;
+  const runId = buttons.find((b) => b.action_id === 'helix_approve')?.value;
   if (!runId) throw new Error('DEMO FAILED: keine Freigabe-Buttons erhalten.');
   console.log(`   🔘 Buttons: ${buttons.map((b) => b.text.text).join(' / ')} (Run ${runId.slice(0, 8)}…)`);
 
@@ -225,11 +225,11 @@ async function main() {
 
   // ── 3) Button-Klicks: fail-closed, Rollen-Gate, Freigabe ───────────────────
   console.log('\n── 3a) Unverlinkter Nutzer klickt „Freigeben" (muss scheitern) ──');
-  await handleSlackInteractions(buttonClick(STRANGER, 'ergane_approve', runId));
+  await handleSlackInteractions(buttonClick(STRANGER, 'helix_approve', runId));
   await drainDeferredWork();
 
   console.log('\n── 3b) member klickt „Freigeben" — Policy verlangt lead (muss scheitern) ──');
-  const memberClick = await handleSlackInteractions(buttonClick(MEMBER.slackId, 'ergane_approve', runId));
+  const memberClick = await handleSlackInteractions(buttonClick(MEMBER.slackId, 'helix_approve', runId));
   console.log(`   ✅ ACK HTTP ${memberClick.status} — Entscheidung läuft nach dem Ack`);
   await drainDeferredWork();
 
@@ -241,7 +241,7 @@ async function main() {
   }
 
   console.log('\n── 3c) lead klickt „Freigeben" (berechtigt) ──');
-  const leadClick = await handleSlackInteractions(buttonClick(LEAD.slackId, 'ergane_approve', runId));
+  const leadClick = await handleSlackInteractions(buttonClick(LEAD.slackId, 'helix_approve', runId));
   console.log(`   ✅ ACK HTTP ${leadClick.status} — Ergebnis folgt im Thread`);
   await drainDeferredWork();
   const done = await withTenant(DEMO_ORG, (tx) =>

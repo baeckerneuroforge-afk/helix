@@ -27,7 +27,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'ergane',
+  title: 'helix.ai',
   description: 'Tenant-first foundation — isolation enforced by Postgres RLS.',
 };
 

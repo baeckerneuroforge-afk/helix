@@ -47,8 +47,8 @@ import { getSlackUserLink, resolveSlackTeam, type SlackInstallationRef } from '.
 import { verifySlackSignature } from './verify';
 
 const USAGE =
-  'Usage: `/ergane frage <your question>` or `/ergane skill <key> {"…":…}`\n' +
-  'Example: `/ergane skill beleg_kontieren {"beschreibung":"license","betragEur":1240}`';
+  'Usage: `/helix frage <your question>` or `/helix skill <key> {"…":…}`\n' +
+  'Example: `/helix skill beleg_kontieren {"beschreibung":"license","betragEur":1240}`';
 
 const NOT_LINKED =
   'Your Slack account is not linked to a member of this organization. ' +
@@ -243,7 +243,7 @@ export async function handleSlackEvents(req: Request): Promise<Response> {
 }
 
 // -----------------------------------------------------------------------------
-// POST /api/slack/commands — the /ergane slash command
+// POST /api/slack/commands — the /helix slash command
 // -----------------------------------------------------------------------------
 
 /** Block Kit approval prompt for a paused run — the buttons carry the runId;
@@ -262,19 +262,19 @@ export function approvalBlocks(skillKey: string, runId: string, reason: string):
     },
     {
       type: 'actions',
-      block_id: 'ergane_approval',
+      block_id: 'helix_approval',
       elements: [
         {
           type: 'button',
           style: 'primary',
-          action_id: 'ergane_approve',
+          action_id: 'helix_approve',
           text: { type: 'plain_text', text: 'Approve' },
           value: runId,
         },
         {
           type: 'button',
           style: 'danger',
-          action_id: 'ergane_reject',
+          action_id: 'helix_reject',
           text: { type: 'plain_text', text: 'Reject' },
           value: runId,
         },
@@ -469,10 +469,12 @@ export async function handleSlackInteractions(req: Request): Promise<Response> {
   const { orgId, botTokenRef } = installation;
 
   const action = payload.actions?.[0];
+  // 'ergane_*' bleibt akzeptiert: Approval-Buttons, die vor dem Rebrand zu
+  // helix.ai gepostet wurden, müssen klickbar bleiben.
   const decision =
-    action?.action_id === 'ergane_approve'
+    action?.action_id === 'helix_approve' || action?.action_id === 'ergane_approve'
       ? ('approved' as const)
-      : action?.action_id === 'ergane_reject'
+      : action?.action_id === 'helix_reject' || action?.action_id === 'ergane_reject'
         ? ('rejected' as const)
         : null;
   const runId = action?.value ?? '';

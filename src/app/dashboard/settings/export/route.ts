@@ -15,7 +15,7 @@ export async function GET(): Promise<Response> {
     status: 200,
     headers: {
       'content-type': 'application/json; charset=utf-8',
-      'content-disposition': `attachment; filename="ergane-export-${orgId}.json"`,
+      'content-disposition': `attachment; filename="helix-export-${orgId}.json"`,
     },
   });
 }

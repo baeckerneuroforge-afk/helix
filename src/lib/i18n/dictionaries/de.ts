@@ -131,7 +131,7 @@ export const de: Dictionary = {
     steps: {
       uploadTitle: 'Wissen hochladen',
       uploadHint:
-        'PDF, DOCX, Markdown oder Text — daraus beantwortet ergane Fragen mit Quellenangabe.',
+        'PDF, DOCX, Markdown oder Text — daraus beantwortet helix Fragen mit Quellenangabe.',
       uploadCta: 'Zur Wissensbasis',
       chatTitle: 'Erste Frage stellen',
       chatHint:
@@ -454,13 +454,13 @@ export const de: Dictionary = {
 
   selectOrg: {
     title: 'Organisation wählen',
-    hint: 'ergane ist mandantenfähig. Wähle eine Organisation oder lege eine neue an.',
+    hint: 'helix ist mandantenfähig. Wähle eine Organisation oder lege eine neue an.',
   },
 
   landing: {
     heroTitle: 'Die DSGVO-native KI-Plattform für den Mittelstand',
     heroText:
-      'ergane beantwortet Fragen aus Ihrem Firmenwissen mit Quellenangabe und erledigt Aufgaben mit eingebauter menschlicher Freigabe — mandantengetrennt auf Datenbank-Ebene, jede Handlung im Audit-Trail.',
+      'helix beantwortet Fragen aus Ihrem Firmenwissen mit Quellenangabe und erledigt Aufgaben mit eingebauter menschlicher Freigabe — mandantengetrennt auf Datenbank-Ebene, jede Handlung im Audit-Trail.',
     ctaStart: 'Kostenlos starten',
     ctaSignIn: 'Anmelden',
     features: [

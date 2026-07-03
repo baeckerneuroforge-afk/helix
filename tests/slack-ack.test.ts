@@ -76,7 +76,7 @@ function mentionEvent(teamId: string, eventId: string, text: string): Request {
 
 function commandRequest(teamId: string, triggerId: string, text: string): Request {
   const body = new URLSearchParams({
-    command: '/ergane',
+    command: '/helix',
     team_id: teamId,
     user_id: LEAD.slackId,
     channel_id: 'C_ACK',

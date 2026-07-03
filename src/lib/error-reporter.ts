@@ -28,7 +28,7 @@ export function initErrorReporterFromEnv(): boolean {
 
   setErrorReporter((err, context) => {
     const payload = {
-      source: 'ergane',
+      source: 'helix',
       error: err instanceof Error ? `${err.name}: ${err.message}` : String(err),
       context: maskSecrets(context),
       time: new Date().toISOString(),

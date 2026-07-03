@@ -6,7 +6,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { LegalPlaceholder as P, PublicShell } from '../public-shell';
 
-export const metadata: Metadata = { title: 'Data Processing Agreement — ergane' };
+export const metadata: Metadata = { title: 'Data Processing Agreement — helix.ai' };
 
 const SUBPROCESSORS: Array<[string, string, string]> = [
   ['Vercel Inc.', 'Hosting & delivery of the application', 'USA (EU SCCs)'],
@@ -31,7 +31,7 @@ export default function DpaPage() {
 
         <h2>§ 1 Subject matter and duration</h2>
         <p>
-          The processor operates the SaaS platform "ergane" (knowledge base, AI chat, skill
+          The processor operates the SaaS platform "helix.ai" (knowledge base, AI chat, skill
           execution with approvals) for the controller. Processing starts with the conclusion
           of the contract and ends with the deletion of the organization.
         </p>
