@@ -204,6 +204,22 @@ export const de: Dictionary = {
     questionPlaceholder: 'z. B. Wie viele Urlaubstage haben wir?',
     questionAria: 'Frage',
     ask: 'Fragen',
+    trace: {
+      summary: 'Warum diese Antwort?',
+      sourcesTitle: 'Verwendete Quellen',
+      section: (n: number) => `Abschnitt ${n}`,
+      relevanceHigh: 'hohe Relevanz',
+      relevanceMedium: 'mittlere Relevanz',
+      relevanceLow: 'geringe Relevanz',
+      filtered: (n: number) =>
+        n === 1
+          ? '1 weiterer Treffer ist für Ihre Rolle nicht sichtbar.'
+          : `${n} weitere Treffer sind für Ihre Rolle nicht sichtbar.`,
+      noKnowledge:
+        'Keine ausreichend relevanten Quellen gefunden — deshalb keine inhaltliche Antwort (die KI wurde nicht aufgerufen).',
+      insufficient:
+        'Es wurden Quellen gefunden, sie reichten aber nicht für eine belegte Antwort — der Assistent hat ehrlich abgelehnt.',
+    },
   },
 
   skills: {

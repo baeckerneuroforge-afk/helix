@@ -1,7 +1,12 @@
 import Link from 'next/link';
 import { requireTenant } from '@/lib/auth-context';
 import { getI18n } from '@/lib/i18n/server';
-import { LEGACY_NO_KNOWLEDGE_ANSWERS, NO_KNOWLEDGE_ANSWER, SOURCES_MARKERS } from '@/lib/rag';
+import {
+  LEGACY_NO_KNOWLEDGE_ANSWERS,
+  NO_KNOWLEDGE_ANSWER,
+  SOURCES_MARKERS,
+  parseAnswerTrace,
+} from '@/lib/rag';
 import { withTenant } from '@/lib/tenant';
 import { getFeedbackStats, getOwnFeedback } from '@/lib/rag';
 import { askQuestion, rateAnswer } from './actions';
@@ -35,6 +40,23 @@ function splitSources(content: string): { text: string; sources: string[] } {
 function isNoKnowledge(text: string): boolean {
   const trimmed = text.trim();
   return trimmed === NO_KNOWLEDGE_ANSWER || LEGACY_NO_KNOWLEDGE_ANSWERS.includes(trimmed);
+}
+
+/**
+ * Band a stored similarity into an end-user relevance label. Raw cosine scores
+ * are embedder-specific and cryptic, so we band by HEADROOM above the
+ * threshold that was in force (persisted in the trace), normalized to the
+ * remaining score range — this reads the same for any embedder.
+ */
+function relevanceLabel(
+  similarity: number,
+  threshold: number,
+  labels: { high: string; medium: string; low: string },
+): string {
+  const headroom = (similarity - threshold) / Math.max(1 - threshold, 0.0001);
+  if (headroom >= 0.35) return labels.high;
+  if (headroom >= 0.12) return labels.medium;
+  return labels.low;
 }
 
 export default async function ChatPage() {
@@ -96,6 +118,7 @@ export default async function ChatPage() {
             }
             const { text, sources } = splitSources(msg.content);
             const noKnowledge = isNoKnowledge(text);
+            const trace = parseAnswerTrace(msg.trace);
             return (
               <div
                 key={msg.id}
@@ -110,6 +133,40 @@ export default async function ChatPage() {
                       </span>
                     ))}
                   </div>
+                ) : null}
+                {trace ? (
+                  <details className="answer-trace">
+                    <summary>{c.trace.summary}</summary>
+                    <div className="answer-trace-body">
+                      {trace.noKnowledge ? (
+                        <p className="answer-trace-note">
+                          {trace.sources.length === 0 ? c.trace.noKnowledge : c.trace.insufficient}
+                        </p>
+                      ) : null}
+                      {trace.sources.length > 0 ? (
+                        <>
+                          <span className="answer-trace-title">{c.trace.sourcesTitle}</span>
+                          <ul className="answer-trace-list">
+                            {trace.sources.map((s) => (
+                              <li key={`${s.documentId}:${s.section}`}>
+                                <strong>{s.title}</strong> · {c.trace.section(s.section + 1)} ·{' '}
+                                {relevanceLabel(s.similarity, trace.threshold, {
+                                  high: c.trace.relevanceHigh,
+                                  medium: c.trace.relevanceMedium,
+                                  low: c.trace.relevanceLow,
+                                })}
+                              </li>
+                            ))}
+                          </ul>
+                        </>
+                      ) : null}
+                      {trace.filteredCount > 0 ? (
+                        // Disclosure invariant: filtered hits appear ONLY as a
+                        // count — the trace never carries their titles/content.
+                        <p className="answer-trace-note">{c.trace.filtered(trace.filteredCount)}</p>
+                      ) : null}
+                    </div>
+                  </details>
                 ) : null}
                 <div className="bubble-sources" aria-label={c.rateAria}>
                   {(['up', 'down'] as const).map((verdict) => (
