@@ -1,53 +1,52 @@
 /* ============================================================================
-   helix.ai Design-System v2 — „Präzisionswerkzeug"
+   helix.ai Design-System v3 — „Werkstatt, nicht Labor" (Branding v1)
    Semantik (Gesetz):
-     Stahl-Indigo  = Wissen / liest nur
-     Glut-Orange   = Handlung / führt aus
-     Bernstein     = wartet auf menschliche Freigabe
+     Stahl-Indigo  = Wissens-Strang / liest nur
+     Glut-Orange   = Handlungs-Strang / führt aus — RATIONIERT: max. 2–3 pro Ansicht
+     Bernstein     = wartet auf menschliche Freigabe (Governance-Sprosse)
      Grün          = completed, Rot (gedeckt) = rejected/failed
    Typografie:
-     --font-display  Überschriften & Wortmarke (charaktervoll)
-     --font-sans     Fließtext (ruhig, gut lesbar)
-     --font-mono     Daten: IDs, Beträge, Zeitstempel, Events
+     --font-display  Fraunces — Wortmarke & Überschriften (Charakter, Wärme)
+     --font-sans     Inter — Fließtext UND Zahlen (clean, tabular-nums)
+     --font-mono     JetBrains Mono — nur Technisches: IDs, Zeitstempel, Events
    ========================================================================== */
 :root {
-  /* Canvas & Flächen */
-  --bg: #f6f5f1;
-  --bg-deep: #efeee8;
+  /* Canvas & Flächen (Branding: Warmes Papier) */
+  --bg: #f5f6f4;
+  --bg-deep: #edeeea;
   --card: #ffffff;
-  --border: #e5e3dc;
-  --border-strong: #d6d3ca;
+  --border: #e7e6e1;
+  --border-strong: #d9d7d0;
 
-  /* Text */
-  --text: #191a1f;
-  --text-2: #454852;
-  --text-3: #7d8290;
+  /* Text (Branding: Ink) */
+  --text: #15161b;
+  --text-2: #4a4c55;
+  --text-3: #85878f;
 
-  /* Sidebar */
-  --graphite: #17181d;
-  --graphite-2: #1e2026;
-  --sidebar-text: #a6aab6;
+  /* Die dunkle Werkstatt (Branding: Graphit) */
+  --graphite: #141519;
+  --graphite-2: #1c1e23;
+  --sidebar-text: #a7aab4;
 
-  /* Semantik */
-  --indigo: #3c4570;
+  /* Semantik (Branding: Stahl & Glut) */
+  --indigo: #39426b;
   --indigo-dark: #272d4c;
   --orange: #d6531a;
   --orange-deep: #b8430f;
-  --amber: #b45309;
-  --amber-bg: #fdf4e0;
-  --green: #2e7d55;
-  --green-bg: #eaf5ef;
-  --red: #b91c1c;
-  --red-bg: #fbeeee;
+  --orange-bright: #f26b1f; /* Glut auf Graphit */
+  --amber: #b07a1e;
+  --amber-bg: #fbf3e1;
+  --green: #3e7d5f;
+  --green-bg: #e9f2ed;
+  --red: #b42318;
+  --red-bg: #fbeeec;
 
-  /* Geometrie & Tiefe */
+  /* Geometrie & Tiefe — Flächen ruhig, Tiefe nur bei Interaktion */
   --radius: 14px;
-  --radius-sm: 9px;
+  --radius-sm: 10px;
   --sidebar-w: 248px;
-  --shadow: 0 1px 2px rgba(25, 26, 31, 0.04), 0 1px 1px rgba(25, 26, 31, 0.03);
-  --shadow-lift:
-    0 1px 2px rgba(25, 26, 31, 0.05),
-    0 6px 18px -6px rgba(25, 26, 31, 0.1);
+  --shadow: none;
+  --shadow-lift: 0 6px 18px -8px rgba(20, 21, 25, 0.14);
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -70,19 +69,26 @@ body {
 h1,
 h2,
 h3 {
-  font-family: var(--font-display, var(--font-sans, ui-sans-serif));
-  font-weight: 640;
-  letter-spacing: -0.015em;
+  font-family: var(--font-display, Georgia, serif);
+  font-weight: 600;
+  letter-spacing: -0.02em;
   color: var(--text);
 }
 
-h1 { font-size: 1.35rem; margin: 0 0 0.25rem; }
-h2 { font-size: 1.02rem; margin: 0 0 0.75rem; }
+h1 { font-size: 1.4rem; margin: 0 0 0.25rem; }
+h2 { font-size: 1.05rem; margin: 0 0 0.75rem; }
 
 a { color: var(--indigo); }
 
 .muted { color: var(--text-3); }
 .mono { font-family: var(--font-mono, ui-monospace, monospace); font-size: 0.92em; }
+
+/* Zahlen: immer tabellarisch ausgerichtet — clean, keine Schnörkel. */
+.num,
+.kpi-value,
+.table td {
+  font-variant-numeric: tabular-nums lining-nums;
+}
 
 ::selection { background: color-mix(in srgb, var(--orange) 22%, white); }
 
@@ -135,9 +141,7 @@ a { color: var(--indigo); }
   bottom: 0;
   left: 0;
   width: var(--sidebar-w);
-  background:
-    radial-gradient(28rem 16rem at -30% -10%, rgba(214, 83, 26, 0.09), transparent 60%),
-    linear-gradient(180deg, var(--graphite-2), var(--graphite) 30%);
+  background: var(--graphite);
   color: var(--sidebar-text);
   display: flex;
   flex-direction: column;
@@ -148,17 +152,17 @@ a { color: var(--indigo); }
 .wordmark {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  color: #fff;
-  font-family: var(--font-display, var(--font-sans));
-  font-weight: 700;
+  gap: 0.55rem;
+  color: #ede9e1;
+  font-family: var(--font-display, Georgia, serif);
+  font-weight: 600;
   font-size: 1.22rem;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
   padding: 0.15rem 0.7rem 1.05rem;
   text-decoration: none;
 }
 
-.wordmark .dot { color: var(--orange); }
+.wordmark .dot { color: var(--orange-bright); }
 
 .nav {
   display: grid;
@@ -168,12 +172,13 @@ a { color: var(--indigo); }
 }
 
 .nav-section {
-  font-size: 0.66rem;
-  font-weight: 700;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.62rem;
+  font-weight: 500;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: #626672;
-  padding: 0.95rem 0.7rem 0.35rem;
+  color: #5e6270;
+  padding: 1rem 0.7rem 0.35rem;
   user-select: none;
 }
 
@@ -199,11 +204,7 @@ a { color: var(--indigo); }
 
 .nav-item.active {
   color: #fff;
-  background: linear-gradient(
-    90deg,
-    rgba(214, 83, 26, 0.16),
-    rgba(255, 255, 255, 0.06) 45%
-  );
+  background: rgba(255, 255, 255, 0.07);
 }
 
 .nav-item.active svg { opacity: 1; }
@@ -385,41 +386,40 @@ a.kpi-card:hover {
   align-content: start;
 }
 
+/* Icon ohne Box — ruhig, nur Farbe trägt die Semantik (Stahl liest). */
 .kpi-icon {
   flex: 0 0 auto;
-  width: 2.1rem;
-  height: 2.1rem;
-  border-radius: 10px;
   display: grid;
   place-items: center;
-  color: var(--indigo);
-  background: color-mix(in srgb, var(--indigo) 8%, white);
-  border: 1px solid color-mix(in srgb, var(--indigo) 16%, white);
+  padding-top: 0.1rem;
+  color: color-mix(in srgb, var(--indigo) 55%, var(--text-3));
 }
 
 .kpi-icon--attention {
   color: var(--amber);
-  background: var(--amber-bg);
-  border-color: color-mix(in srgb, var(--amber) 25%, white);
 }
 
+/* Eyebrow-Muster aus dem Branding: Mono, klein, gesperrt. */
 .kpi-label {
-  font-size: 0.75rem;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.66rem;
   color: var(--text-3);
   text-transform: uppercase;
-  letter-spacing: 0.07em;
-  font-weight: 600;
+  letter-spacing: 0.12em;
+  font-weight: 500;
 }
 
+/* Die Zahl selbst: Inter, tabellarisch, ohne Schnörkel. */
 .kpi-value {
-  font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 1.75rem;
+  font-family: var(--font-sans, ui-sans-serif, system-ui);
+  font-size: 2rem;
   font-weight: 600;
-  margin-top: 0.3rem;
-  line-height: 1.1;
+  letter-spacing: -0.02em;
+  margin-top: 0.35rem;
+  line-height: 1.05;
 }
 
-.kpi-value.attention { color: var(--orange); }
+.kpi-value.attention { color: var(--amber); }
 
 .quick-grid {
   display: grid;
@@ -450,15 +450,11 @@ a.quick-card .quick-hint {
 }
 
 .quick-icon {
-  width: 2rem;
-  height: 2rem;
-  border-radius: 9px;
   display: grid;
   place-items: center;
-  margin-bottom: 0.35rem;
-  color: var(--indigo);
-  background: color-mix(in srgb, var(--indigo) 8%, white);
-  border: 1px solid color-mix(in srgb, var(--indigo) 16%, white);
+  justify-content: start;
+  margin-bottom: 0.4rem;
+  color: color-mix(in srgb, var(--indigo) 55%, var(--text-3));
 }
 
 .quick-arrow {
@@ -471,7 +467,7 @@ a.quick-card .quick-hint {
 }
 
 a.quick-card:hover .quick-arrow {
-  color: var(--orange);
+  color: var(--indigo);
   transform: translateY(-50%) translateX(3px);
 }
 
@@ -604,12 +600,13 @@ a.quick-card:hover .quick-arrow {
 
 .table th {
   text-align: left;
-  font-size: 0.7rem;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.66rem;
   text-transform: uppercase;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.08em;
   color: var(--text-3);
-  font-weight: 650;
-  padding: 0.5rem 0.75rem;
+  font-weight: 500;
+  padding: 0.55rem 0.75rem;
   border-bottom: 1px solid var(--border);
 }
 
@@ -689,7 +686,6 @@ button { font: inherit; cursor: pointer; }
   background: var(--orange);
   border-color: var(--orange);
   color: #fff;
-  box-shadow: 0 1px 2px rgba(214, 83, 26, 0.25);
 }
 
 .btn--primary:hover {
@@ -1148,11 +1144,11 @@ pre.json {
 .public-logo {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  font-family: var(--font-display, var(--font-sans));
-  font-weight: 700;
+  gap: 0.55rem;
+  font-family: var(--font-display, Georgia, serif);
+  font-weight: 600;
   font-size: 1.2rem;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
   color: var(--text);
   text-decoration: none;
 }
@@ -1169,8 +1165,9 @@ pre.json {
 }
 
 .public-hero h1 {
-  font-size: 2rem;
-  line-height: 1.2;
+  font-size: clamp(2rem, 4.6vw, 2.6rem);
+  line-height: 1.12;
+  letter-spacing: -0.025em;
   margin-bottom: 0.75rem;
 }
 
@@ -1317,10 +1314,13 @@ pre.json {
 }
 
 .leak-wordmark {
-  font-family: var(--font-display, inherit);
-  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-display, Georgia, serif);
+  font-weight: 600;
   font-size: 1.15rem;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.03em;
   color: var(--text);
 }
 
