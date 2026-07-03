@@ -20,16 +20,18 @@ export default async function RunsPage() {
 
   return (
     <>
-      <p className="page-intro">
-        Jede Skill-Ausführung mit Status und Betrag. Details inklusive Step-Timeline per Klick.
-      </p>
-
       <section className="card card--table">
         {runs.length === 0 ? (
-          <p className="muted" style={{ padding: '0.8rem 1.25rem' }}>
-            Noch keine Ausführungen. Starte einen Skill unter{' '}
-            <Link href="/dashboard/skills">Skills</Link>.
-          </p>
+          <div className="empty" style={{ margin: '1rem 1.3rem' }}>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M12 22a10 10 0 1 0-10-10M2 22l5-5M2 17v5h5" />
+            </svg>
+            <strong>Noch keine Ausführungen</strong>
+            <span>
+              Starte einen Skill unter <Link href="/dashboard/skills">Skills</Link> — jeder Lauf
+              erscheint hier mit Status und Schritt-Timeline.
+            </span>
+          </div>
         ) : (
           <table className="table">
             <thead>

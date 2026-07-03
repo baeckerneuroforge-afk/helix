@@ -26,13 +26,14 @@ export default async function ApprovalsPage() {
 
   return (
     <>
-      <p className="page-intro">
-        Handelnde Schritte, die auf eine menschliche Entscheidung warten. Die Rollen-Prüfung
-        erzwingt der Server — nicht diese Seite.
-      </p>
-
       {pending.length === 0 ? (
-        <div className="empty">Keine wartenden Freigaben. Alles entschieden.</div>
+        <div className="empty">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M9 12l2 2 4-4M12 2l7 4v6c0 5-3.5 8.5-7 10-3.5-1.5-7-5-7-10V6l7-4z" />
+          </svg>
+          <strong>Keine wartenden Freigaben</strong>
+          <span>Alles entschieden — sobald ein Skill eine menschliche Freigabe braucht, erscheint sie hier.</span>
+        </div>
       ) : (
         pending.map((approval) => {
           const amount = amountOfInput(approval.run.input);
@@ -78,7 +79,10 @@ export default async function ApprovalsPage() {
 
       {decided.length > 0 ? (
         <section className="card card--table">
-          <h2 style={{ padding: '0.8rem 1.25rem 0' }}>Entschieden</h2>
+          <div className="card-title">
+            <h2>Entschieden</h2>
+            <span className="row-meta">letzte {decided.length}</span>
+          </div>
           <table className="table">
             <thead>
               <tr>
