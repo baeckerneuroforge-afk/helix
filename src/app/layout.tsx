@@ -2,6 +2,9 @@ import './globals.css';
 import type { Metadata } from 'next';
 import { Inter, JetBrains_Mono } from 'next/font/google';
 import { ClerkProvider } from '@clerk/nextjs';
+import { deDE } from '@clerk/localizations';
+import { LocaleProvider } from '@/lib/i18n/client';
+import { getLocale } from '@/lib/i18n/server';
 
 // display: 'swap' — text renders immediately in the fallback font instead of
 // blocking on the webfont download (no invisible-text phase).
@@ -17,11 +20,16 @@ export const metadata: Metadata = {
   description: 'Tenant-first foundation — isolation enforced by Postgres RLS.',
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // English is the platform default; the switcher sets the cookie.
+  const locale = await getLocale();
+
   return (
-    <ClerkProvider>
-      <html lang="de">
-        <body className={`${inter.variable} ${jetbrainsMono.variable}`}>{children}</body>
+    <ClerkProvider localization={locale === 'de' ? deDE : undefined}>
+      <html lang={locale}>
+        <body className={`${inter.variable} ${jetbrainsMono.variable}`}>
+          <LocaleProvider locale={locale}>{children}</LocaleProvider>
+        </body>
       </html>
     </ClerkProvider>
   );
