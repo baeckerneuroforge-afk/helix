@@ -185,6 +185,10 @@ model OrgSettings {
   // Org-wide output language (generated PDFs, outgoing e-mails): 'en' | 'de'.
   // The UI language is per browser (cookie), NOT this field.
   locale            String   @default("en")
+  // Value-dashboard assumptions (USD). NULL / missing map key = code default
+  // (src/lib/value.ts). Admin-editable, audited as 'policy.changed'.
+  valueHourlyRateUsd   Decimal? @map("value_hourly_rate_usd") @db.Decimal(8, 2)
+  valueMinutesPerSkill Json?    @map("value_minutes_per_skill")
   createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt         DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 

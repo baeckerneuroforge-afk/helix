@@ -10,6 +10,7 @@ export const en = {
     skills: 'Skills',
     runs: 'Runs',
     approvals: 'Approvals',
+    value: 'Value',
     audit: 'Audit',
     settings: 'Settings',
     runDetail: 'Run',
@@ -25,6 +26,7 @@ export const en = {
       skills: 'Start workflows — guardrails and approvals included',
       runs: 'Every run with status, steps and result',
       approvals: 'Acting steps waiting for a human decision',
+      value: 'What automation saves — hours and dollars, from live runs only',
       audit: 'Append-only log — nothing is changed or deleted',
       settings: 'Approval rules, visibility, roles, Slack, GDPR',
       runDetail: 'Step timeline, approvals and result of this run',
@@ -74,6 +76,7 @@ export const en = {
     kpiSkills: 'Skills available',
     kpiRuns7d: 'Runs (7 days)',
     kpiPendingApprovals: 'Pending approvals',
+    kpiValue30d: 'Value created (30 days)',
     recentActivity: 'Recent activity',
     fullAudit: 'Full audit →',
     bannerWaiting: (n: number) => (n === 1 ? `${n} run is waiting` : `${n} runs are waiting`),
@@ -90,6 +93,34 @@ export const en = {
     quickSkillsHint: 'Start automations — guardrails included.',
     quickKnowledgeHint: 'Ingest documents and control visibility.',
     quickChatHint: 'Ask your verified knowledge — answers with sources.',
+  },
+
+  value: {
+    intro:
+      'The automation score: what your live skill runs save in hours and dollars. Counts LIVE runs only — dry runs (simulations) never appear here. The assumptions per skill are editable in the',
+    introSettingsLink: 'settings',
+    periodAria: 'Period',
+    periodDays: (n: number) => `Last ${n} days`,
+    kpiRuns: 'Live runs',
+    kpiSuccessRate: 'Success rate',
+    kpiSavedHours: 'Hours saved',
+    kpiSavedValue: 'Value created',
+    successRateHint: (completed: number, decided: number) =>
+      `${completed} of ${decided} decided runs completed`,
+    noDecidedRuns: 'no decided runs yet',
+    perSkillTitle: 'By skill',
+    perSkillHint:
+      'Value accrues only for completed live runs: minutes saved per run × hourly rate.',
+    colRuns: 'Runs',
+    colCompleted: 'Completed',
+    colSavedHours: 'Hours saved',
+    colSavedValue: 'Value',
+    monthlyTitle: 'Monthly trend',
+    colMonth: 'Month',
+    noRuns: 'No live runs in this period yet. Start a skill — every completed live run adds value here.',
+    assumptions: (rate: string) =>
+      `Assumption: one saved hour is worth ${rate}. Admins can adjust rate and minutes per skill in the settings.`,
+    hours: (n: number) => `${n} h`,
   },
 
   onboarding: {
@@ -298,6 +329,7 @@ export const en = {
       visibility: 'Knowledge visibility',
       members: 'Members & roles',
       company: 'Company details',
+      value: 'Value assumptions',
       slack: 'Slack',
       language: 'Language',
       data: 'Data & deletion',
@@ -360,6 +392,13 @@ export const en = {
     companyVatIdPlaceholder: 'e.g. DE123456789',
     companyBank: 'Bank details',
     companyBankPlaceholder: 'Example Bank\nIBAN: DE00 0000 0000 0000 0000 00\nBIC: XXXXDEXX',
+    valueTitle: 'Value assumptions (value dashboard)',
+    valueHint:
+      'How the value dashboard converts completed live runs into hours and dollars: minutes saved per successful run × hourly rate. Assumptions, not measurements — every change is audited. Dry runs never count.',
+    valueHourlyRate: 'Hourly rate (USD)',
+    valueMinutesTitle: 'Minutes saved per successful run',
+    valueMinutes: 'Minutes / run',
+    valueDefaultChip: 'default',
     slackTitle: 'Slack connection',
     slackHint:
       'One Slack workspace (team) maps to exactly one organization. Requests from unmapped workspaces are rejected. MVP: the team id is entered manually — an OAuth install flow is a later step. The bot token stays in .env (SLACK_BOT_TOKEN); the database stores only a reference, never the secret.',
