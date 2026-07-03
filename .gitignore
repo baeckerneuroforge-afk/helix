@@ -37,3 +37,4 @@ yarn-error.log*
 
 # local postgres data (used by the local verification helper, not committed)
 /.pgdata
+.vercel
