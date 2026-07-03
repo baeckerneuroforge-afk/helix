@@ -1,0 +1,21 @@
+-- =============================================================================
+-- helix — answer trace ("Why this answer?") on chat messages.
+--
+-- Applied by `prisma migrate deploy` as the database OWNER.
+--
+-- Assistant messages get a nullable jsonb `trace` describing WHAT the answer
+-- was grounded on: the used chunks (document id/title, section, similarity),
+-- the relevance threshold in force, whether the honest no-knowledge path was
+-- taken — and the NUMBER of hits hidden by the asker's role.
+--
+-- DISCLOSURE INVARIANT: role-filtered hits appear in the trace ONLY as a
+-- count. Their titles/content/ids are never loaded into the application
+-- (the count is computed as COUNT(*) in SQL — see src/lib/rag/retrieve.ts)
+-- and therefore can never end up in this column.
+--
+-- NULL = message written before this feature (or a user message) — the UI
+-- simply shows no trace then. RLS/GRANTs of chat_messages (0002/0008) are
+-- table-level and cover the new column unchanged.
+-- =============================================================================
+
+ALTER TABLE "chat_messages" ADD COLUMN "trace" JSONB;

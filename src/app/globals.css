@@ -765,6 +765,51 @@ button { font: inherit; cursor: pointer; }
   margin-top: 0.6rem;
 }
 
+/* --- Answer trace ("Why this answer?") — unobtrusive add-on, not content. --- */
+details.answer-trace {
+  margin-top: 0.5rem;
+}
+
+details.answer-trace summary {
+  cursor: pointer;
+  font-size: 0.75rem;
+  color: var(--text-3);
+}
+
+details.answer-trace summary:hover { color: var(--text-2); }
+
+.answer-trace-body {
+  margin-top: 0.4rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--card) 60%, transparent);
+  font-size: 0.78rem;
+  color: var(--text-2);
+}
+
+.answer-trace-title {
+  display: block;
+  font-weight: 600;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.68rem;
+  margin-bottom: 0.25rem;
+}
+
+.answer-trace-list {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+.answer-trace-list li { margin: 0.1rem 0; }
+
+.answer-trace-note {
+  margin: 0.35rem 0 0;
+  color: var(--text-3);
+}
+
 .chat-input {
   position: sticky;
   bottom: 0;
