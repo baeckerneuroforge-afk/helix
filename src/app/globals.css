@@ -233,6 +233,9 @@ a { color: var(--indigo); }
   text-align: center;
 }
 
+.nav-item--soon { opacity: 0.45; }
+.nav-item--soon:hover { opacity: 0.65; }
+
 /* Mandanten-Karte unten in der Sidebar: wer bin ich, in welcher Org, welche Rolle. */
 .sidebar-footer {
   margin-top: auto;
