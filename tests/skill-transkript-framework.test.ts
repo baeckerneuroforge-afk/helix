@@ -59,8 +59,9 @@ const TRANSCRIPT_B_OTHER_TENANT = [
 
 /**
  * Deterministischer, instrumentierter Fake-ChatProvider.
- *  - erzeugt STRUKTURIERTES Markdown (Executive Summary + drei "## "-Abschnitte),
- *    das die gelieferten Kontext-Titel spiegelt → prüfbare "aus Transkript"-Bindung.
+ *  - erzeugt STRUKTURIERTES Markdown (Executive Summary + die "## "-Abschnitte
+ *    der Framework-Struktur), das die gelieferten Kontext-Titel spiegelt →
+ *    prüfbare "aus Transkript"-Bindung.
  *  - beweist DIE REGEL: bei jedem complete() prüft er über den EIGENSTÄNDIGEN
  *    prisma-Client (nicht tx!), dass KEIN Tenant-Tx-Kontext gesetzt ist. Da der
  *    Call im prepare()-Hook VOR jeder withTenant-Tx läuft, ist app.current_org
@@ -89,6 +90,7 @@ class InstrumentedFakeChat implements ChatProvider {
 
     // Kontext-Titel aus den [Titel]-Präfixen der User-Nachricht ziehen und im
     // Framework spiegeln — so ist die "aus Transkript"-Bindung im Output prüfbar.
+    // Die Abschnitte spiegeln die im Skill definierte Struktur (FRAMEWORK_SECTIONS).
     const titles = [...lastUser.matchAll(/\[([^\]]+)\]/g)].map((m) => m[1]);
     const firstTitle = titles[0] ?? 'transcript';
     return [
@@ -97,15 +99,21 @@ class InstrumentedFakeChat implements ChatProvider {
       '## Situation',
       `Grounded in ${firstTitle}.`,
       '',
-      '## Key themes',
-      '- Onboarding',
-      '- Automation',
-      '- Rollout',
+      '## Key themes & goals',
+      '- Self-service for the top requests',
+      '- Unified agent view',
       '',
-      '## Recommendations / use cases',
-      '1. Training',
-      '2. Dashboards',
-      '3. Pilot site',
+      '## Constraints',
+      '- Read-only legacy access',
+      '- EU data residency',
+      '',
+      '## Prioritized use cases',
+      '1. Self-service portal',
+      '2. Unified agent view',
+      '3. Handover with context',
+      '',
+      '## Next steps',
+      '1. Scope the pilot',
     ].join('\n');
   }
 }
@@ -201,22 +209,24 @@ describe('(a) erzeugt aus Transkript-Kontext ein strukturiertes Framework', () =
     expect(entwurf.generiert).toBe(true);
     const markdown = String(entwurf.markdown);
     expect(markdown).toContain('## Situation');
-    expect(markdown).toContain('## Recommendations / use cases');
+    expect(markdown).toContain('## Prioritized use cases');
     expect(markdown).toContain('Executive summary');
     // Aus dem Transkript gegründet: der Titel des Transkripts taucht auf.
     expect(markdown).toContain('Kickoff Nordwind');
     expect(entwurf.quellen).toContain('Kickoff Nordwind');
 
-    // Nach Freigabe: finale Ausgabe mit Kopf (Framework/Fokus) + Quellen-Zeile.
+    // Nach Freigabe: finale Ausgabe mit H1-Kopf (Framework/Fokus) + kursiver
+    // Quellen-Fußzeile.
     const resumed = await approve(ORG_A, handle.runId, APPROVER);
     expect(resumed.status).toBe('completed');
     const out = await stepDetail(ORG_A, handle.runId, 'framework_ausgegeben');
     expect(out.generiert).toBe(true);
     const text = String(out.text);
-    expect(text).toContain('Framework: Produkteinführung Logistik-Software Nordwind');
-    expect(text).toContain('Focus: Produkteinführung');
-    expect(text).toContain('## Key themes');
-    expect(text.trimEnd().endsWith('Sources: Kickoff Nordwind')).toBe(true);
+    expect(text).toContain('# Framework — Produkteinführung Logistik-Software Nordwind');
+    expect(text).toContain('**Focus:** Produkteinführung');
+    expect(text).toContain('## Key themes & goals');
+    // Kanonische Quellen-Fußzeile am Ende (kursiv, rückparsebar).
+    expect(text.trimEnd().endsWith('_Sources: Kickoff Nordwind_')).toBe(true);
   });
 
   it('ohne Transkript-Kontext: ehrliche Notiz, KEIN LLM-Call, KEINE Quellen', async () => {
