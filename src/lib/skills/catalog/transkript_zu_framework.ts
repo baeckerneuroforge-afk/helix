@@ -43,6 +43,126 @@ export const FRAMEWORK_GUARDRAIL_REASON =
 /** Anzahl Transkript-Passagen, die als Kontext in den Entwurf gehen. */
 const CONTEXT_K = 8;
 
+// -----------------------------------------------------------------------------
+// System-Prompts: die inhaltliche Substanz dieses Skills. Sie definieren eine
+// professionelle, kundentaugliche Framework-Struktur und binden JEDE Aussage an
+// den Transkript-Inhalt (die Soll-Quelle-1-Idee aus dem Bauplan, Teil G:
+// „jede Kernaussage trägt eine Transkript-Quelle"). Der generative Inhalt
+// antwortet in der SPRACHE DER TRANSKRIPTE — ein deutscher Discovery-Call ergibt
+// ein deutsches Framework, kein englisches. Nur die feste Rahmung ist lokalisiert.
+// -----------------------------------------------------------------------------
+
+/** Die sechs Abschnitte, sprachneutral als Struktur-Rückgrat (für beide Prompts
+ *  und die Tests: die Abschnittsnamen dürfen nur hier geändert werden). */
+export const FRAMEWORK_SECTIONS = {
+  en: ['Executive summary', 'Situation', 'Key themes & goals', 'Constraints', 'Prioritized use cases', 'Next steps'],
+  de: ['Executive Summary', 'Ausgangslage', 'Kernthemen & Ziele', 'Rahmenbedingungen', 'Priorisierte Use Cases', 'Nächste Schritte'],
+} as const;
+
+const SYSTEM_PROMPT_EN = [
+  'You are a senior consultant. From the transcript excerpts of client conversations below, you write a crisp,',
+  'client-ready working framework in GitHub-flavored Markdown — the kind of document a consultant would put in',
+  'front of a client and their CFO.',
+  '',
+  'STRUCTURE — use exactly these sections, each as a "## " heading, in this order. Do NOT add your own title or "# " top-level heading and do NOT repeat the topic as a heading — start directly with "## Executive summary":',
+  '## Executive summary — one tight paragraph a CFO can read in 30 seconds: the situation, the biggest lever, and the proposed direction.',
+  '## Situation — the starting point in the client\'s own terms: who is involved (name the roles/stakeholders that appear), and the concrete pain, with the numbers the transcript actually states.',
+  '## Key themes & goals — the recurring themes across the conversations, and the success criteria the client named (turn stated targets into measurable goals; quote the figure the transcript gives).',
+  '## Constraints — the hard technical and organizational boundaries raised in the transcripts (e.g. system-access limits, data-handling rules, team/timeline/budget realities). Only what is actually stated.',
+  '## Prioritized use cases — a numbered list of 3–5 concrete recommendations, most valuable first. For EACH: a bold title, one line on the value/impact (tie it to a pain or goal from the transcript), and a rough effort/sequencing note (pilot vs. rollout, timeframe) where the transcript supports it.',
+  '## Next steps — 3–5 concrete, sequenced actions that move from this framework toward a decision.',
+  '',
+  'GROUNDING — this is non-negotiable:',
+  '- Use ONLY the supplied transcript excerpts. Each excerpt is prefixed with its source title in [brackets].',
+  '- Every claim must trace to something the transcript actually says. Do NOT invent numbers, names, dates, budgets, or commitments.',
+  '- Prefer the client\'s concrete figures and phrasing over generic consulting language. If the transcript does not support a point, leave it out rather than fabricate.',
+  '- Keep it tight and skimmable: short paragraphs, bullet/numbered lists, bold labels. No filler, no throat-clearing, no meta-commentary about being an AI.',
+  '- Do NOT add your own "Sources" list — the system appends the canonical one.',
+  '- Write the ENTIRE framework in the language of the transcripts.',
+].join('\n');
+
+const SYSTEM_PROMPT_DE = [
+  'Du bist Senior-Beraterin bzw. Senior-Berater. Aus den unten stehenden Transkript-Auszügen von Kundengesprächen',
+  'schreibst du ein prägnantes, kundentaugliches Arbeits-Framework in GitHub-Flavored Markdown — ein Dokument, das',
+  'man einem Kunden und dessen Geschäftsführung/CFO direkt vorlegen kann.',
+  '',
+  'STRUKTUR — nutze exakt diese Abschnitte, jeder als "## "-Überschrift, in dieser Reihenfolge. Füge KEINEN eigenen Titel bzw. keine "# "-Überschrift der obersten Ebene ein und wiederhole NICHT das Thema als Überschrift — beginne direkt mit "## Executive Summary":',
+  '## Executive Summary — ein knapper Absatz, den ein CFO in 30 Sekunden liest: die Ausgangslage, der größte Hebel und die vorgeschlagene Richtung.',
+  '## Ausgangslage — der Ausgangspunkt in den Worten des Kunden: wer beteiligt ist (benenne die vorkommenden Rollen/Stakeholder) und der konkrete Schmerz, mit den Zahlen, die das Transkript tatsächlich nennt.',
+  '## Kernthemen & Ziele — die wiederkehrenden Themen über die Gespräche hinweg und die vom Kunden genannten Erfolgskriterien (mach aus genannten Zielen messbare Zielwerte; greife die im Transkript genannte Kennzahl auf).',
+  '## Rahmenbedingungen — die harten technischen und organisatorischen Grenzen aus den Transkripten (z. B. Zugriffsbeschränkungen auf Systeme, Datenschutz-/Datenhaltungs-Regeln, Team-/Zeit-/Budget-Realitäten). Nur was wirklich genannt wird.',
+  '## Priorisierte Use Cases — eine nummerierte Liste von 3–5 konkreten Empfehlungen, das Wertvollste zuerst. Für JEDEN: ein fetter Titel, eine Zeile zum Nutzen/Impact (verknüpft mit einem Schmerz oder Ziel aus dem Transkript) und, wo das Transkript es hergibt, ein grober Aufwands-/Reihenfolge-Hinweis (Pilot vs. Rollout, Zeitrahmen).',
+  '## Nächste Schritte — 3–5 konkrete, aufeinanderfolgende Handlungen, die von diesem Framework zu einer Entscheidung führen.',
+  '',
+  'FUNDIERUNG — nicht verhandelbar:',
+  '- Nutze AUSSCHLIESSLICH die gelieferten Transkript-Auszüge. Jeder Auszug trägt seinen Quell-Titel in [eckigen Klammern].',
+  '- Jede Aussage muss auf etwas zurückführbar sein, das im Transkript tatsächlich steht. Erfinde KEINE Zahlen, Namen, Daten, Budgets oder Zusagen.',
+  '- Bevorzuge die konkreten Zahlen und Formulierungen des Kunden gegenüber generischer Berater-Sprache. Was das Transkript nicht hergibt, lässt du weg, statt es zu erfinden.',
+  '- Halte es knapp und überfliegbar: kurze Absätze, Aufzählungen/Nummerierungen, fette Labels. Kein Fülltext, keine Einleitungsfloskeln, kein Meta-Kommentar über eine KI.',
+  '- Füge KEINE eigene „Quellen"-Liste an — das System hängt die kanonische an.',
+  '- Schreibe das GESAMTE Framework in der Sprache der Transkripte.',
+].join('\n');
+
+/** Timeout pro LLM-Versuch (ms). Ein hängender Netzwerk-Call (kein Fehler, keine
+ *  Antwort) ist so schädlich wie ein Fehler: er blockiert den Deliverable-Lauf
+ *  unbegrenzt. Ein hartes Zeitlimit macht daraus einen wiederholbaren Fehler.
+ *  Grosszügig bemessen: ein grosses Framework mit adaptivem Thinking braucht real
+ *  ~60s; das Limit liegt deutlich darüber, damit nur echte Hänger abbrechen und
+ *  ein normal-langsamer Call nie fälschlich getötet wird. */
+const LLM_ATTEMPT_TIMEOUT_MS = 180_000;
+
+/** Kurzer Retry MIT Timeout für den generativen LLM-Call. Ein teurer
+ *  Deliverable-Lauf darf nicht an einem einzelnen transienten Netzwerk-Blip
+ *  scheitern oder an einem hängenden Call unbegrenzt festsitzen (beides in der
+ *  Praxis beobachtet: sporadische "Connection error." bzw. stehende Verbindung
+ *  beim großen Call, während der nächste Versuch sofort durchgeht). Läuft im
+ *  prepare()-Hook — also OHNE offene Tx, die 15s-Regel bleibt unberührt. Kein
+ *  Retry bei fachlicher Ablehnung (refusal): die ist deterministisch. */
+async function completeWithRetry(
+  chat: ChatProvider,
+  req: Parameters<ChatProvider['complete']>[0],
+  attempts = 3,
+  timeoutMs = LLM_ATTEMPT_TIMEOUT_MS,
+): Promise<string> {
+  let lastErr: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await withTimeout(chat.complete(req), timeoutMs);
+    } catch (err) {
+      lastErr = err;
+      const msg = err instanceof Error ? err.message : String(err);
+      // Fachliche Ablehnung ist deterministisch → nicht wiederholen.
+      if (/refus/i.test(msg)) break;
+      // Kurzer, wachsender Backoff (0.5s, 1s) vor dem nächsten Versuch.
+      if (i < attempts - 1) await new Promise((r) => setTimeout(r, 500 * (i + 1)));
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
+}
+
+/** Race einer Promise gegen ein Zeitlimit; nach Ablauf wirft sie (der Retry
+ *  fängt das). Der zugrunde liegende Call läuft im Hintergrund weiter, aber sein
+ *  (verspätetes) Ergebnis wird verworfen — akzeptabel für einen idempotenten
+ *  Lese-/Generier-Call ohne Nebenwirkung. */
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new Error(`LLM call timed out after ${ms}ms`)),
+      ms,
+    );
+    p.then(
+      (v) => {
+        clearTimeout(timer);
+        resolve(v);
+      },
+      (e) => {
+        clearTimeout(timer);
+        reject(e);
+      },
+    );
+  });
+}
+
 interface FrameworkInput {
   /** Worum es geht — steuert das Retrieval über die Transkripte. */
   thema: string;
@@ -65,8 +185,10 @@ function localeAusState(state: Record<string, SkillJson>): Locale {
 }
 
 /** Kundenorientierte Rahmung pro Dokumentsprache (Org-Locale). Nur die feste
- *  Rahmung ist übersetzt; der generative Inhalt kommt in der Sprache des
- *  Kontexts vom Modell. */
+ *  Rahmung (Kopf/Quellen-Label/Kein-Kontext-Notiz) ist an die Org-Locale
+ *  gebunden; der GENERATIVE Inhalt kommt in der Sprache der Transkripte selbst
+ *  (siehe systemPrompt — ein deutsches Transkript ergibt ein deutsches
+ *  Framework, unabhängig von der UI-Sprache). */
 const TEXTS: Record<Locale, {
   frameworkFor: (thema: string) => string;
   focusLine: (fokus: string) => string;
@@ -76,41 +198,29 @@ const TEXTS: Record<Locale, {
   systemPrompt: string;
 }> = {
   en: {
-    frameworkFor: (thema) => `Framework: ${thema}`,
-    focusLine: (fokus) => `Focus: ${fokus}`,
-    generalFocus: 'general working framework',
+    frameworkFor: (thema) => `Framework — ${thema}`,
+    focusLine: (fokus) => `**Focus:** ${fokus}`,
+    generalFocus: 'a general engagement framework with prioritized use cases',
     noContext: (thema) =>
-      `No transcript content is available for "${thema}" — no framework can be grounded yet.`,
+      `_No transcript content is available for "${thema}" yet — a grounded framework cannot be produced._`,
     sourcesLabel: 'Sources',
-    systemPrompt:
-      'You design a clear, structured working framework from the transcript excerpts of this organization.\n\n' +
-      'Return GitHub-flavored Markdown with these sections, each as a "## " heading: ' +
-      '"Situation" (the starting point), "Key themes" (the recurring themes across the transcripts), ' +
-      'and "Recommendations / use cases" (at least three concrete, numbered items). ' +
-      'Open with a one-paragraph executive summary BEFORE the first heading.\n\n' +
-      'Use ONLY the supplied transcript excerpts. Each excerpt is prefixed with its source title in [brackets]. ' +
-      'Do not invent facts. Do not add your own sources list — the system appends it. Answer in English.',
+    systemPrompt: SYSTEM_PROMPT_EN,
   },
   de: {
-    frameworkFor: (thema) => `Framework: ${thema}`,
-    focusLine: (fokus) => `Fokus: ${fokus}`,
-    generalFocus: 'allgemeines Arbeits-Framework',
+    frameworkFor: (thema) => `Framework — ${thema}`,
+    focusLine: (fokus) => `**Fokus:** ${fokus}`,
+    generalFocus: 'ein allgemeines Einführungs-Framework mit priorisierten Use Cases',
     noContext: (thema) =>
-      `Kein Transkript-Inhalt zu „${thema}" verfügbar — es kann noch kein Framework fundiert werden.`,
+      `_Zu „${thema}" liegt noch kein Transkript-Inhalt vor — ein fundiertes Framework ist noch nicht möglich._`,
     sourcesLabel: 'Quellen',
-    systemPrompt:
-      'Du entwirfst aus den Transkript-Auszügen dieser Organisation ein klares, strukturiertes Arbeits-Framework.\n\n' +
-      'Gib GitHub-Flavored Markdown mit diesen Abschnitten zurück, jeder als "## "-Überschrift: ' +
-      '„Ausgangslage" (der Ausgangspunkt), „Kernthemen" (die wiederkehrenden Themen über die Transkripte) ' +
-      'und „Empfehlungen / Use Cases" (mindestens drei konkrete, nummerierte Punkte). ' +
-      'Beginne mit einem Executive Summary von einem Absatz VOR der ersten Überschrift.\n\n' +
-      'Nutze AUSSCHLIESSLICH die gelieferten Transkript-Auszüge. Jeder Auszug trägt seinen Quell-Titel in [eckigen Klammern]. ' +
-      'Erfinde keine Fakten. Füge keine eigene Quellenliste an — das System hängt sie an. Antworte auf Deutsch.',
+    systemPrompt: SYSTEM_PROMPT_DE,
   },
 };
 
-/** User-Nachricht: Thema/Fokus + Transkript-Passagen als Kontextblock (dasselbe
- *  [Titel]-Präfix-Schema wie answerQuestion). */
+/** User-Nachricht: Auftrag (Thema/Fokus) + Transkript-Passagen als klar
+ *  abgegrenzter Kontextblock (dasselbe [Titel]-Präfix-Schema wie answerQuestion).
+ *  Der Kontextblock ist explizit als solcher markiert, damit das Modell Auftrag
+ *  und Quelle nicht verwechselt. */
 function buildUserMessage(
   locale: Locale,
   thema: string,
@@ -118,11 +228,29 @@ function buildUserMessage(
   treffer: WissensTreffer[],
 ): string {
   const t = TEXTS[locale];
-  const context = treffer.map((tr) => `[${tr.titel}] ${tr.auszug}`).join('\n\n');
+  const context = treffer.map((tr) => `[${tr.titel}]\n${tr.auszug}`).join('\n\n---\n\n');
   const focusText = fokus || t.generalFocus;
   return locale === 'de'
-    ? `Thema: ${thema}\nGewünschtes Framework: ${focusText}\n\nTranskript-Auszüge:\n\n${context}`
-    : `Topic: ${thema}\nDesired framework: ${focusText}\n\nTranscript excerpts:\n\n${context}`;
+    ? [
+        `Auftrag: Erstelle das Framework zum Thema „${thema}".`,
+        `Art des Frameworks: ${focusText}.`,
+        '',
+        'Stütze jede Aussage auf die folgenden Transkript-Auszüge (nur diese):',
+        '',
+        '=== TRANSKRIPT-AUSZÜGE ===',
+        context,
+        '=== ENDE DER AUSZÜGE ===',
+      ].join('\n')
+    : [
+        `Task: Produce the framework on the topic "${thema}".`,
+        `Type of framework: ${focusText}.`,
+        '',
+        'Ground every claim in the following transcript excerpts (these only):',
+        '',
+        '=== TRANSCRIPT EXCERPTS ===',
+        context,
+        '=== END OF EXCERPTS ===',
+      ].join('\n');
 }
 
 export const transkriptZuFramework: SkillDef = {
@@ -185,7 +313,7 @@ export const transkriptZuFramework: SkillDef = {
           return { generiert: false, markdown: null };
         }
         const chat: ChatProvider = getChatProvider();
-        const markdown = await chat.complete({
+        const markdown = await completeWithRetry(chat, {
           system: TEXTS[locale].systemPrompt,
           messages: [{ role: 'user', content: buildUserMessage(locale, thema, fokus, treffer) }],
           maxTokens: 16000,
@@ -209,8 +337,9 @@ export const transkriptZuFramework: SkillDef = {
           return { generiert: false, markdown: texts.noContext(thema), quellen: [] };
         }
 
-        const kopf = [texts.frameworkFor(thema)];
-        if (fokus) kopf.push(texts.focusLine(fokus));
+        // Sauberer Markdown-Dokumentkopf: H1-Titel + optionale Fokus-Zeile.
+        const kopf = [`# ${texts.frameworkFor(thema)}`];
+        if (fokus) kopf.push('', texts.focusLine(fokus));
         return { generiert: true, markdown, kopf: kopf.join('\n'), quellen };
       },
     },
@@ -247,8 +376,12 @@ export const transkriptZuFramework: SkillDef = {
           return { ausgegeben: true, generiert: false, text: markdown, quellen: [] };
         }
 
-        // Finales Deliverable: Kopf + Framework + kanonische Quellen-Zeile.
-        const text = [kopf, '', markdown, '', `${texts.sourcesLabel}: ${quellen.join(', ')}`].join('\n');
+        // Finales Deliverable, sauberes Markdown-Dokument:
+        //   H1-Kopf (+ Fokus) · Trenner · generiertes Framework · Trenner ·
+        //   kursive Quellen-Fußzeile. Die Fußzeile trägt das kanonische
+        //   "<Label>: <Quellen>" (von der Chat-/Skill-Schicht rückparsebar).
+        const fussnote = `_${texts.sourcesLabel}: ${quellen.join(', ')}_`;
+        const text = [kopf, '', '---', '', markdown, '', '---', '', fussnote].join('\n');
         return { ausgegeben: true, generiert: true, text, quellen };
       },
     },
