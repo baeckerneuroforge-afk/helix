@@ -125,7 +125,11 @@ export const de: Dictionary = {
     openDeliverables: (n: number) => (n === 1 ? '1 Deliverable' : `${n} Deliverables`),
     noRuns: 'noch keine Läufe',
     flagsTitle: 'Loop & Flags',
-    noFlags: 'Noch keine Flags — der Loop wird Abweichungen hier anzeigen, sobald er aktiv ist.',
+    noFlags: 'Keine Abweichungen — der Loop meldet hier, wenn etwas vom Soll abweicht.',
+    flagsCount: (n: number) => (n === 1 ? '1 Flag' : `${n} Flags`),
+    flagsWindow: 'in den letzten 7 Tagen',
+    flagsLast: 'Zuletzt',
+    flagsAll: 'Alle Flags →',
     waitingTitle: 'Wartet auf dich',
     noWaiting: 'Nichts offen — alle Freigaben sind entschieden.',
     waitingRun: 'Lauf',
@@ -154,7 +158,44 @@ export const de: Dictionary = {
   comingSoon: {
     title: 'Kommt bald',
     connectors: 'Hier werden angebundene Tools verwaltet — OAuth-Installs, Sync-Status und Konfiguration. Die Konnektor-Architektur ist geplant; diese Ansicht geht mit der ersten Integration live.',
-    flags: 'Hier zeigt der geschlossene Loop Abweichungen an: Akzeptanzkriterien-Verletzungen pro Deliverable und Prozess-Metrik-Warnungen über Kunden hinweg. Der Loop-Mechanismus ist für eine spätere Etappe geplant.',
+  },
+
+  flags: {
+    // Ehrliche Einordnung: ein Flag ist ein Append-only-Audit-Eintrag, nie mutiert.
+    note: 'Was der Loop gemeldet hat: Akzeptanzkriterien-Verletzungen bei Deliverables und Abweichungen von Prozess-Metriken. Append-only — Einträge werden nie verändert oder gelöscht.',
+    entryCount: (n: number) => (n === 1 ? '1 Flag' : `${n} Flags`),
+    emptyTitle: 'Keine Abweichungen',
+    emptyBody:
+      'Der Loop meldet hier, wenn ein Deliverable seine Akzeptanzkriterien verfehlt oder eine Prozess-Metrik vom Soll abweicht. Für diesen Filter wurde nichts geflaggt.',
+    // Tabellen-Überschriften.
+    time: 'Zeit',
+    flag: 'Flag',
+    severity: 'Schweregrad',
+    deviation: 'Abweichung',
+    source: 'Quelle',
+    // Kategorie-Labels (detail.category → welche Art Prüfung ausgelöst hat).
+    category: {
+      criteria: 'Akzeptanzkriterium',
+      metric: 'Prozess-Metrik',
+      other: 'Flag',
+    },
+    // Schweregrad-Labels (detail.severity).
+    severityLabel: {
+      critical: 'kritisch',
+      warning: 'Warnung',
+      info: 'Info',
+    },
+    // Soll vs. Ist einer Abweichung.
+    expected: 'Soll',
+    actual: 'Ist',
+    // Wie viele Kriterien verletzt, wenn ein Flag mehrere bündelt.
+    moreDeviations: (n: number) => (n === 1 ? '+1 weiteres' : `+${n} weitere`),
+    deviationCount: (n: number) => (n === 1 ? '1 Kriterium' : `${n} Kriterien`),
+    // Links vom Flag zu seinem Ursprung.
+    viewRun: 'Lauf öffnen →',
+    viewArtifact: 'Deliverable öffnen →',
+    // Der Korrektur-Vorschlag (Autonomie 'suggest'/'autonomous'), falls vorhanden.
+    suggested: 'Vorschlag',
   },
 
   value: {

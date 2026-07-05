@@ -102,7 +102,6 @@ const SECTIONS: NavSection[] = [
       {
         href: '/dashboard/flags',
         key: 'flags',
-        soon: true,
         icon: <Icon d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7" />,
       },
       {
@@ -160,11 +159,13 @@ export function DashboardShell({
   tenantName,
   role,
   pendingApprovals,
+  openFlags,
   children,
 }: {
   tenantName: string;
   role: string;
   pendingApprovals: number;
+  openFlags: number;
   children: React.ReactNode;
 }) {
   const t = useDict();
@@ -199,6 +200,14 @@ export function DashboardShell({
                       : pathname === item.href || pathname.startsWith(`${item.href}/`);
                   const key = item.key as keyof typeof t.nav;
                   const label = t.nav[key] as string;
+                  // Live count badge: approvals waiting, or flags raised in the
+                  // last 7 days (mirrors the cockpit panel + layout window).
+                  const badge =
+                    item.href === '/dashboard/approvals'
+                      ? pendingApprovals
+                      : item.href === '/dashboard/flags'
+                        ? openFlags
+                        : 0;
                   return (
                     <Link
                       key={item.href}
@@ -208,9 +217,7 @@ export function DashboardShell({
                     >
                       {item.icon}
                       <span className="nav-label">{label}</span>
-                      {item.href === '/dashboard/approvals' && pendingApprovals > 0 ? (
-                        <span className="nav-badge">{pendingApprovals}</span>
-                      ) : null}
+                      {badge > 0 ? <span className="nav-badge">{badge}</span> : null}
                     </Link>
                   );
                 })}
