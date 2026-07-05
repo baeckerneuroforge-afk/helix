@@ -44,8 +44,19 @@ export function metricSeverity(metric: LoopMetric): FlagSeverity {
  * Build the logAudit() entry for a metric deviation. The `detail` is the flat
  * shape toFlagView reads; `target` is the metric key so the flag points at the
  * metric. `orgId` is passed through for the audit row's tenant column.
+ *
+ * `suggestedAction` (optional) is set by the caller ONLY under autonomy
+ * 'suggest'/'autonomous' — a human-readable, review-oriented one-liner. A metric
+ * flag deliberately gets NO `correction` pointer: a process-metric drift is a
+ * trend across many runs, not a single deliverable, so there is nothing honest
+ * to "re-run with the same inputs". No correction ⇒ no "start correction" button
+ * (that stays a criteria-flag capability). See src/lib/loop/suggest.ts.
  */
-export function buildMetricFlag(orgId: string, metric: LoopMetric): AuditEntry {
+export function buildMetricFlag(
+  orgId: string,
+  metric: LoopMetric,
+  suggestedAction?: string,
+): AuditEntry {
   return {
     orgId,
     actorId: LOOP_ACTOR,
@@ -65,6 +76,8 @@ export function buildMetricFlag(orgId: string, metric: LoopMetric): AuditEntry {
       ...(metric.detail.numerator != null ? { numerator: metric.detail.numerator } : {}),
       ...(metric.detail.denominator != null ? { denominator: metric.detail.denominator } : {}),
       ...(metric.detail.worst ? { worst: metric.detail.worst } : {}),
+      // Only under 'suggest'/'autonomous'; absent under 'report'.
+      ...(suggestedAction ? { suggestedAction } : {}),
     },
   };
 }

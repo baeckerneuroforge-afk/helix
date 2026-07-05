@@ -5,6 +5,7 @@ import { getI18n } from '@/lib/i18n/server';
 import { toFlagView } from '@/lib/loop/flags-view';
 import { JsonView, formatDateTime } from '../ui';
 import { CategoryChip, DeviationSummary, FlagSourceLink, SeverityChip } from './flag-cells';
+import { CorrectButton } from './correct-button';
 
 export const dynamic = 'force-dynamic';
 
@@ -76,6 +77,7 @@ export default async function FlagsPage({
                         {view.suggestedAction}
                       </div>
                     ) : null}
+                    {view.correction ? <CorrectButton correction={view.correction} /> : null}
                   </td>
                   <td>
                     <SeverityChip view={view} locale={locale} />

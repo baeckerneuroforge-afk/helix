@@ -15,6 +15,9 @@ import { listSkills } from '@/lib/skills';
 import { getValueSettings, DEFAULT_HOURLY_RATE_USD } from '@/lib/value';
 import { VisibilityBadge, formatEuro } from '../ui';
 import { POLICY_PRESETS } from '@/lib/policies';
+import { DEFAULT_LOOP_AUTONOMY, LOOP_AUTONOMY_LEVELS } from '@/lib/loop/settings';
+import { METRIC_THRESHOLDS } from '@/lib/loop/metrics';
+import { frameworkCriteria } from '@/lib/loop/criteria/framework';
 import {
   addClient,
   editClient,
@@ -25,6 +28,7 @@ import {
   saveApprovalNotifyEmail,
   saveChatRetention,
   saveCompanyProfile,
+  saveLoopAutonomy,
   saveOrgLocale,
   saveValueSettings,
   removeSlackUserLink,
@@ -48,6 +52,7 @@ const TAB_KEYS = [
   'company',
   'value',
   'slack',
+  'loop',
   'language',
   'data',
 ] as const;
@@ -111,6 +116,22 @@ export default async function SettingsPage({
   const adminCount = memberships.filter((m) => m.role === 'admin' || m.role === 'owner').length;
   const rawOrgLocale = orgSettings?.locale;
   const orgLocale = isLocale(rawOrgLocale) ? rawOrgLocale : 'en';
+
+  // Loop tab: current autonomy level + read-only thresholds. Rate metrics
+  // (0..1) show as a percentage; count metrics (e.g. iteration_rate) show as a
+  // plain number — decided by the threshold magnitude, which is <= 1 for rates.
+  const loopAutonomy = orgSettings?.loopAutonomy ?? DEFAULT_LOOP_AUTONOMY;
+  const loopMetricRows = (
+    Object.keys(METRIC_THRESHOLDS) as Array<keyof typeof METRIC_THRESHOLDS>
+  ).map((key) => {
+    const { threshold, direction } = METRIC_THRESHOLDS[key];
+    const isRate = threshold <= 1;
+    return {
+      key,
+      direction,
+      targetLabel: isRate ? `${Math.round(threshold * 100)}%` : String(threshold),
+    };
+  });
   const localeLabel: Record<string, string> = {
     en: s.languageEnglish,
     de: s.languageGerman,
@@ -754,6 +775,125 @@ export default async function SettingsPage({
                     </button>
                   </td>
                 </tr>
+              </tbody>
+            </table>
+          </section>
+        </>
+      ) : null}
+
+      {tab === 'loop' ? (
+        <>
+          <section className="card">
+            <h2>{s.loop.autonomyTitle}</h2>
+            <p className="muted" style={{ marginTop: 0 }}>
+              {s.loop.autonomyHint}
+            </p>
+            <form action={saveLoopAutonomy}>
+              <div style={{ display: 'grid', gap: '0.8rem' }}>
+                {LOOP_AUTONOMY_LEVELS.map((level) => {
+                  const label =
+                    level === 'report'
+                      ? s.loop.levelReport
+                      : level === 'suggest'
+                        ? s.loop.levelSuggest
+                        : s.loop.levelAutonomous;
+                  const desc =
+                    level === 'report'
+                      ? s.loop.levelReportDesc
+                      : level === 'suggest'
+                        ? s.loop.levelSuggestDesc
+                        : s.loop.levelAutonomousDesc;
+                  return (
+                    <label
+                      key={level}
+                      style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start' }}
+                    >
+                      <input
+                        type="radio"
+                        name="loopAutonomy"
+                        value={level}
+                        defaultChecked={loopAutonomy === level}
+                        style={{ marginTop: '0.25rem' }}
+                      />
+                      <span>
+                        <strong>{label}</strong>
+                        {level === DEFAULT_LOOP_AUTONOMY ? (
+                          <span className="chip chip--gray" style={{ marginLeft: '0.4rem' }}>
+                            {s.loop.defaultBadge}
+                          </span>
+                        ) : null}
+                        <div className="row-meta">{desc}</div>
+                        {level === 'autonomous' ? (
+                          <div className="row-meta" style={{ marginTop: '0.3rem' }}>
+                            <span className="chip chip--amber">{s.loop.autonomousNotActive}</span>
+                          </div>
+                        ) : null}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+              <button type="submit" className="btn btn--primary" style={{ marginTop: '0.9rem' }}>
+                {s.loop.save}
+              </button>
+            </form>
+          </section>
+
+          <section className="card card--table">
+            <div className="card-title">
+              <h2>{s.loop.thresholdsTitle}</h2>
+            </div>
+            <p className="muted" style={{ padding: '0 1.25rem' }}>
+              {s.loop.thresholdsHint}
+            </p>
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>{s.loop.metric}</th>
+                  <th>{s.loop.target}</th>
+                  <th>{s.loop.direction}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loopMetricRows.map((m) => (
+                  <tr key={m.key}>
+                    <td>
+                      <strong>{s.loop.metricNames[m.key] ?? m.key}</strong>
+                      <div className="row-meta mono">{m.key}</div>
+                    </td>
+                    <td className="mono">{m.targetLabel}</td>
+                    <td className="row-meta">
+                      {m.direction === 'atLeast' ? s.loop.atLeast : s.loop.atMost}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
+
+          <section className="card card--table">
+            <div className="card-title">
+              <h2>{s.loop.criteriaTitle}</h2>
+              <span className="row-meta">{s.loop.criteriaType(frameworkCriteria.type)}</span>
+            </div>
+            <p className="muted" style={{ padding: '0 1.25rem' }}>
+              {s.loop.criteriaHint}
+            </p>
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>{s.loop.criterion}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {frameworkCriteria.criteria.map((c) => (
+                  <tr key={c.key}>
+                    <td>
+                      <strong>{c.label}</strong>
+                      <div className="row-meta mono">{c.key}</div>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </section>

@@ -17,6 +17,8 @@ import {
   setMembershipRole,
   setVisibilityGrant,
 } from '@/lib/policies';
+import { LOOP_AUTONOMY_LEVELS, setLoopAutonomy } from '@/lib/loop/settings';
+import type { LoopAutonomy } from '@/lib/loop/settings';
 import { listSkills } from '@/lib/skills';
 import { createSlackInstallation, linkSlackUser, unlinkSlackUser } from '@/lib/slack/admin';
 import { createClient, updateClient } from '@/lib/clients';
@@ -193,6 +195,22 @@ export async function saveApprovalNotifyEmail(formData: FormData) {
   await setApprovalNotifyEmail({ orgId, actorUserId: userId, email });
 
   revalidatePath('/dashboard/settings');
+}
+
+// -----------------------------------------------------------------------------
+// Loop autonomy (Admin-Gate + Audit in src/lib/loop/settings.ts)
+// -----------------------------------------------------------------------------
+
+export async function saveLoopAutonomy(formData: FormData) {
+  const raw = String(formData.get('loopAutonomy') ?? '');
+  const level = LOOP_AUTONOMY_LEVELS.find((l) => l === raw) as LoopAutonomy | undefined;
+  if (!level) throw new Error('Invalid loop autonomy level.');
+
+  const { orgId, userId } = await requireTenantWithMembership();
+  await setLoopAutonomy({ orgId, actorUserId: userId, level });
+
+  revalidatePath('/dashboard/settings');
+  revalidatePath('/dashboard/flags');
 }
 
 // -----------------------------------------------------------------------------

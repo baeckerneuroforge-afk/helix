@@ -13,12 +13,17 @@
 // per-org tx; no LLM call, no slow external call — only DB reads and audit
 // writes, well within the 15s budget.
 
+import type { AuditLog } from '@prisma/client';
 import { logAudit } from '../audit';
 import { logError } from '../log';
 import { prisma } from '../prisma';
 import { withTenant, type Tx } from '../tenant';
+import { toFlagView } from './flags-view';
 import { buildMetricFlag, METRIC_FLAG_ACTION } from './metric-flags';
 import { computeLoopMetrics } from './metrics';
+import { notifyFlag } from './notify';
+import { resolveAutonomyContext } from './settings';
+import { buildMetricSuggestedActionText } from './suggest';
 
 /** How far back the metric window reaches (plan §8: last 7 days). */
 export const LOOP_WINDOW_DAYS = 7;
@@ -61,18 +66,35 @@ async function hasRecentMetricFlag(tx: Tx, metricKey: string): Promise<boolean> 
  * written. Throws only on an actual DB error (the caller isolates it).
  */
 export async function runLoopTickForOrg(orgId: string, since: Date): Promise<number> {
-  return withTenant(orgId, async (tx) => {
+  // The flag WRITES happen inside one short tx; the rows are collected so the
+  // best-effort notification runs AFTER the commit (never inside the tx).
+  const flagRows = await withTenant(orgId, async (tx) => {
     const { metrics } = await computeLoopMetrics(tx, orgId, { since });
-    let raised = 0;
+
+    // Autonomy + locale: one fast read up front (not per metric). Under 'suggest'
+    // (or 'autonomous', which behaves like it until Schritt E) each metric flag
+    // carries a review-oriented suggestedAction; under 'report' it does not.
+    // Metric flags never carry a re-run `correction` — see buildMetricFlag.
+    const { locale, suggest } = await resolveAutonomyContext(tx, orgId);
+    const suggestion = suggest ? buildMetricSuggestedActionText(locale) : undefined;
+
+    const rows: AuditLog[] = [];
     for (const metric of metrics) {
       if (metric.passed) continue;
       // Dedup in the SAME tx, before writing — no duplicate within 24h.
       if (await hasRecentMetricFlag(tx, metric.key)) continue;
-      await logAudit(tx, buildMetricFlag(orgId, metric));
-      raised += 1;
+      rows.push(await logAudit(tx, buildMetricFlag(orgId, metric, suggestion)));
     }
-    return raised;
+    return rows;
   });
+
+  // AFTER commit: notify per new flag, best-effort. notifyFlag never throws, so
+  // one org's mail/Slack hiccup cannot fail its tick (and runLoopTick isolates a
+  // tenant anyway). Returns the count of NEW flags for the sweep tally.
+  for (const row of flagRows) {
+    await notifyFlag(orgId, toFlagView(row));
+  }
+  return flagRows.length;
 }
 
 export interface RunLoopTickOptions {

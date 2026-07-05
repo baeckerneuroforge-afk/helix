@@ -49,10 +49,24 @@ export interface FlagView {
   deviations: FlagDeviation[];
   /** Skill run this flag arose from, if the detail records one (deep-linkable). */
   runId: string | null;
-  /** Correction proposal, only present for autonomy 'suggest'/'autonomous'. */
+  /** Correction proposal (human-readable), only for autonomy 'suggest'/'autonomous'. */
   suggestedAction: string | null;
+  /**
+   * The machine reference the "start correction" button needs to re-run the
+   * skill — present ONLY when the flag carries a concrete re-runnable run (a
+   * criteria flag). null for report-mode flags and for metric flags (which have
+   * no single originating run to replay). Its presence is what gates the button.
+   */
+  correction: FlagCorrection | null;
   /** The raw detail JSON, so the UI can still offer an "expand" escape hatch. */
   raw: unknown;
+}
+
+/** The re-run pointer projected from a flag's detail.correction (see suggest.ts). */
+export interface FlagCorrection {
+  skillKey: string;
+  sourceRunId: string;
+  clientId: string | null;
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -116,6 +130,24 @@ function extractDeviations(detail: Record<string, unknown>): FlagDeviation[] {
   return [];
 }
 
+/**
+ * Pull the machine correction reference out of a flag detail, defensively.
+ * Requires a non-empty skillKey AND sourceRunId — without both there is nothing
+ * to re-run, so we return null and the UI shows no button (never a broken one).
+ */
+function extractCorrection(detail: Record<string, unknown>): FlagCorrection | null {
+  const c = asRecord(detail.correction);
+  if (!c) return null;
+  const skillKey = typeof c.skillKey === 'string' ? c.skillKey : null;
+  const sourceRunId = typeof c.sourceRunId === 'string' ? c.sourceRunId : null;
+  if (!skillKey || !sourceRunId) return null;
+  return {
+    skillKey,
+    sourceRunId,
+    clientId: typeof c.clientId === 'string' ? c.clientId : null,
+  };
+}
+
 /** Project a raw audit row into a FlagView. Pure; safe on any `flag.*` row. */
 export function toFlagView(row: AuditLog): FlagView {
   const detail = asRecord(row.detail) ?? {};
@@ -132,6 +164,7 @@ export function toFlagView(row: AuditLog): FlagView {
     deviations: extractDeviations(detail),
     runId: typeof detail.runId === 'string' ? detail.runId : null,
     suggestedAction: typeof suggested === 'string' ? suggested : null,
+    correction: extractCorrection(detail),
     raw: row.detail ?? null,
   };
 }

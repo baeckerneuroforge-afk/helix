@@ -196,6 +196,12 @@ export const de: Dictionary = {
     viewArtifact: 'Deliverable öffnen →',
     // Der Korrektur-Vorschlag (Autonomie 'suggest'/'autonomous'), falls vorhanden.
     suggested: 'Vorschlag',
+    // Der „Korrektur starten“-Button (nur wenn ein erneut ausführbarer Vorschlag existiert).
+    startCorrection: 'Korrektur starten',
+    startingCorrection: 'Wird gestartet…',
+    correctionStarted: 'Korrektur gestartet — wartet auf Freigabe.',
+    correctionStartedNoGate: 'Korrektur gestartet.',
+    correctionFailed: 'Die Korrektur konnte nicht gestartet werden.',
   },
 
   value: {
@@ -527,8 +533,46 @@ export const de: Dictionary = {
       company: 'Firmendaten',
       value: 'Wert-Annahmen',
       slack: 'Slack',
+      loop: 'Loop',
       language: 'Sprache',
       data: 'Daten & Löschung',
+    },
+    loop: {
+      autonomyTitle: 'Autonomie-Stufe',
+      autonomyHint:
+        'Wie scharf der Loop bei einer Abweichung eingreift. Der Standard meldet nur — er ändert nie etwas von selbst.',
+      levelReport: 'Melden',
+      levelReportDesc:
+        'Standard. Eine Abweichung wird geflaggt und eine Benachrichtigung verschickt. Du justierst. Nichts läuft automatisch.',
+      levelSuggest: 'Vorschlagen',
+      levelSuggestDesc:
+        'Wie Melden, plus: ein Flag enthält einen Korrektur-Vorschlag — ein erneuter Lauf desselben Skills mit denselben Eingaben. Du startest ihn per Klick; der Lauf durchläuft weiterhin das normale Approval-Gate.',
+      levelAutonomous: 'Autonom',
+      levelAutonomousDesc:
+        'Der Loop startet die Korrektur selbst — sie durchläuft aber das normale Approval-Gate (ein Mensch gibt frei oder lehnt ab). Der Loop kann einen Lauf starten, aber nie freigeben.',
+      autonomousNotActive:
+        'Noch nicht aktiv: Diese Stufe verhält sich vorerst wie „Vorschlagen“. Das automatische Starten kommt in einem späteren Schritt.',
+      defaultBadge: 'Standard',
+      save: 'Autonomie-Stufe speichern',
+      thresholdsTitle: 'Prozess-Metrik-Schwellen',
+      thresholdsHint:
+        'Wogegen der periodische Check prüft. Vorerst nur lesend — eine Abweichung erzeugt ein Flag.',
+      metric: 'Metrik',
+      target: 'Sollwert',
+      direction: 'Gesund wenn',
+      atLeast: '≥ Soll',
+      atMost: '≤ Soll',
+      metricNames: {
+        success_rate: 'Erfolgsquote',
+        approval_rate: 'Freigabe-Quote',
+        iteration_rate: 'Iterationen pro Kunde + Skill',
+        feedback_negative_rate: 'Negatives Chat-Feedback',
+      } as Record<string, string>,
+      criteriaTitle: 'Aktive Akzeptanzkriterien',
+      criteriaHint:
+        'Wogegen jedes fertige Deliverable geprüft wird. Vorerst nur lesend — eine Verletzung erzeugt ein Flag.',
+      criteriaType: (type: string) => `Typ: ${type}`,
+      criterion: 'Kriterium',
     },
     governance: {
       presetsTitle: 'Branchen-Presets',

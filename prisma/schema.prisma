@@ -42,6 +42,18 @@ enum DocumentVisibility {
   @@map("document_visibility")
 }
 
+/// Loop autonomy level (Schritt D, plan §4) — how sharply the loop acts on a
+/// deviation. 'report' = flag + notify (Default); 'suggest' = flag carries a
+/// correction proposal the human triggers; 'autonomous' = reserved for Schritt E
+/// (behaves like 'suggest' until then). Stored per org on org_settings.
+enum LoopAutonomy {
+  report
+  suggest
+  autonomous
+
+  @@map("loop_autonomy")
+}
+
 enum ActorType {
   human
   agent
@@ -191,6 +203,9 @@ model OrgSettings {
   // (src/lib/value.ts). Admin-editable, audited as 'policy.changed'.
   valueHourlyRateUsd   Decimal? @map("value_hourly_rate_usd") @db.Decimal(8, 2)
   valueMinutesPerSkill Json?    @map("value_minutes_per_skill")
+  // Loop autonomy level (Schritt D). Default 'report' = unchanged (flag + notify).
+  // Admin-editable via setLoopAutonomy, audited as 'policy.changed'.
+  loopAutonomy      LoopAutonomy @default(report) @map("loop_autonomy")
   createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt         DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
