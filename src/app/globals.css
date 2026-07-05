@@ -1062,6 +1062,23 @@ pre.json {
   word-break: break-word;
 }
 
+/* --- Flags (Loop-Abweichungen) -------------------------------------------- */
+/* The deviation cell: one violated criterion / metric per line, with its
+   Soll → Ist. Kept tight so it reads at a glance in both the table and the
+   cockpit panel. */
+.flag-devs { display: grid; gap: 0.3rem; }
+.flag-dev { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.2rem 0.5rem; }
+.flag-dev-key { color: var(--text-2); }
+.flag-dev-nums strong { color: var(--text-2); font-weight: 650; }
+
+/* Compact one-line flag summary used in the cockpit panel. */
+.flag-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.6rem;
+}
+
 /* --- Freigaben ------------------------------------------------------------------ */
 .approval-card {
   display: grid;

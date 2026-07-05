@@ -1,9 +1,11 @@
 import Link from 'next/link';
 import { requireTenant } from '@/lib/auth-context';
 import { getI18n } from '@/lib/i18n/server';
+import { toFlagView } from '@/lib/loop/flags-view';
 import { formatMoney } from '@/lib/money';
 import { withTenant } from '@/lib/tenant';
 import { computeValueStats } from '@/lib/value';
+import { CategoryChip, DeviationSummary, SeverityChip } from './flags/flag-cells';
 import { OnboardingCard } from './onboarding';
 import { ActorChip, RunStatusChip, formatDateTime } from './ui';
 
@@ -34,6 +36,7 @@ export default async function CockpitPage() {
   const o = t.overview;
 
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
   const data = await withTenant(orgId, async (tx) => {
     const [
@@ -43,6 +46,8 @@ export default async function CockpitPage() {
       valueStats,
       artifactCount30d,
       recentAudit,
+      flagCount7d,
+      lastFlag,
       onboarding,
     ] = await Promise.all([
       tx.approval.count({ where: { status: 'pending' } }),
@@ -76,6 +81,15 @@ export default async function CockpitPage() {
         orderBy: { createdAt: 'desc' },
         take: 6,
       }),
+      // Loop flags = append-only audit rows with a 'flag.' action (plan §5,
+      // Stufe A). Count the last 7 days and pull the newest one for the panel.
+      tx.auditLog.count({
+        where: { action: { startsWith: 'flag.' }, createdAt: { gte: sevenDaysAgo } },
+      }),
+      tx.auditLog.findFirst({
+        where: { action: { startsWith: 'flag.' }, createdAt: { gte: sevenDaysAgo } },
+        orderBy: { createdAt: 'desc' },
+      }),
       {
         hasDocument: (await tx.document.count()) > 0,
         hasChatMessage: (await tx.chatMessage.count()) > 0,
@@ -93,9 +107,13 @@ export default async function CockpitPage() {
       valueStats,
       artifactCount30d,
       recentAudit,
+      flagCount7d,
+      lastFlag,
       onboarding,
     };
   });
+
+  const lastFlagView = data.lastFlag ? toFlagView(data.lastFlag) : null;
 
   const activeClients = data.clients.filter(
     (cl) => cl.skillRuns.length > 0 || cl._count.artifacts > 0,
@@ -239,8 +257,31 @@ export default async function CockpitPage() {
 
       {/* --- Loop & Flags --- */}
       <section className="card">
-        <h2 style={{ marginBottom: '0.5rem' }}>{c.flagsTitle}</h2>
-        <p className="muted">{c.noFlags}</p>
+        <div className="card-title">
+          <h2>{c.flagsTitle}</h2>
+          {data.flagCount7d > 0 ? (
+            <Link className="row-meta" href="/dashboard/flags">
+              {c.flagsAll}
+            </Link>
+          ) : null}
+        </div>
+        {lastFlagView ? (
+          <>
+            <p className="row-meta" style={{ margin: '0 0 0.7rem' }}>
+              <strong>{c.flagsCount(data.flagCount7d)}</strong> {c.flagsWindow}
+            </p>
+            <div className="row-meta" style={{ marginBottom: '0.35rem' }}>
+              {c.flagsLast} · {formatDateTime(lastFlagView.createdAt, locale)}
+            </div>
+            <div className="flag-line">
+              <SeverityChip view={lastFlagView} locale={locale} />
+              <CategoryChip view={lastFlagView} locale={locale} />
+              <DeviationSummary view={lastFlagView} locale={locale} max={1} />
+            </div>
+          </>
+        ) : (
+          <p className="muted">{c.noFlags}</p>
+        )}
       </section>
 
       {/* --- Recent activity --- */}

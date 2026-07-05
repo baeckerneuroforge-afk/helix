@@ -124,7 +124,11 @@ export const en = {
     openDeliverables: (n: number) => (n === 1 ? '1 deliverable' : `${n} deliverables`),
     noRuns: 'no runs yet',
     flagsTitle: 'Loop & Flags',
-    noFlags: 'No flags yet — the loop will surface deviations here once it is active.',
+    noFlags: 'No deviations — the loop reports here when something drifts from target.',
+    flagsCount: (n: number) => (n === 1 ? '1 flag' : `${n} flags`),
+    flagsWindow: 'in the last 7 days',
+    flagsLast: 'Most recent',
+    flagsAll: 'All flags →',
     waitingTitle: 'Waiting for you',
     noWaiting: 'Nothing waiting — all approvals are decided.',
     waitingRun: 'Run',
@@ -153,7 +157,44 @@ export const en = {
   comingSoon: {
     title: 'Coming soon',
     connectors: 'This is where connected tools will be managed — OAuth installs, sync status and configuration. The connector architecture is planned; this view will go live with the first integration.',
-    flags: 'This is where the closed loop surfaces deviations: acceptance-criteria violations per deliverable and process-metric warnings across clients. The loop mechanism is planned for a later stage.',
+  },
+
+  flags: {
+    // Honest framing: a flag is an append-only audit entry, never mutated.
+    note: 'What the loop flagged: acceptance-criteria violations on deliverables and process-metric deviations. Append-only — entries are never changed or deleted.',
+    entryCount: (n: number) => (n === 1 ? '1 flag' : `${n} flags`),
+    emptyTitle: 'No deviations',
+    emptyBody:
+      'The loop reports here when a deliverable misses its acceptance criteria or a process metric drifts from target. Nothing has been flagged for this filter.',
+    // Table headers.
+    time: 'Time',
+    flag: 'Flag',
+    severity: 'Severity',
+    deviation: 'Deviation',
+    source: 'Source',
+    // Category labels (detail.category → what kind of check fired).
+    category: {
+      criteria: 'Acceptance criteria',
+      metric: 'Process metric',
+      other: 'Flag',
+    },
+    // Severity labels (detail.severity).
+    severityLabel: {
+      critical: 'critical',
+      warning: 'warning',
+      info: 'info',
+    },
+    // Expected (Soll) vs actual (Ist) for one deviation.
+    expected: 'target',
+    actual: 'actual',
+    // How many criteria failed, when a flag bundles several.
+    moreDeviations: (n: number) => (n === 1 ? '+1 more' : `+${n} more`),
+    deviationCount: (n: number) => (n === 1 ? '1 criterion' : `${n} criteria`),
+    // Links from a flag to its origin.
+    viewRun: 'Open run →',
+    viewArtifact: 'Open deliverable →',
+    // The correction proposal (autonomy 'suggest'/'autonomous'), when present.
+    suggested: 'Suggested',
   },
 
   value: {

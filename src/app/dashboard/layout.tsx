@@ -18,9 +18,16 @@ export default async function DashboardLayout({ children }: { children: React.Re
     role,
   });
 
-  const { org, pendingApprovals } = await withTenant(orgId, async (tx) => ({
+  // 7-day window for the flags nav badge — mirrors the cockpit panel's window,
+  // so "N" in the sidebar and "N flags in the last 7 days" always agree.
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+  const { org, pendingApprovals, openFlags } = await withTenant(orgId, async (tx) => ({
     org: await tx.organization.findUnique({ where: { id: orgId } }),
     pendingApprovals: await tx.approval.count({ where: { status: 'pending' } }),
+    openFlags: await tx.auditLog.count({
+      where: { action: { startsWith: 'flag.' }, createdAt: { gte: sevenDaysAgo } },
+    }),
   }));
 
   return (
@@ -28,6 +35,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       tenantName={org?.name ?? orgSlug ?? clerkOrgId}
       role={role}
       pendingApprovals={pendingApprovals}
+      openFlags={openFlags}
     >
       {children}
     </DashboardShell>
