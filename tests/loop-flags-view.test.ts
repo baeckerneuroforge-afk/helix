@@ -100,6 +100,51 @@ describe('toFlagView — planned metric flag (flat shape)', () => {
   });
 });
 
+describe('toFlagView — correction ref (Schritt D)', () => {
+  const CRITERIA_WITH_CORRECTION = {
+    ...CRITERIA_DETAIL,
+    suggestedAction: 'Re-run “Framework” with the same inputs.',
+    correction: {
+      skillKey: 'transkript_zu_framework',
+      sourceRunId: 'run-42',
+      clientId: 'client-7',
+    },
+  };
+
+  it('projects a complete correction ref and the suggestion together', () => {
+    const view = toFlagView(row({ detail: CRITERIA_WITH_CORRECTION }));
+    expect(view.suggestedAction).toBe('Re-run “Framework” with the same inputs.');
+    expect(view.correction).toEqual({
+      skillKey: 'transkript_zu_framework',
+      sourceRunId: 'run-42',
+      clientId: 'client-7',
+    });
+  });
+
+  it('drops an incomplete correction ref (missing sourceRunId) → no button', () => {
+    const view = toFlagView(
+      row({ detail: { ...CRITERIA_DETAIL, correction: { skillKey: 'x' } } }),
+    );
+    expect(view.correction).toBeNull();
+  });
+
+  it('a report-mode flag (no correction key) has correction null', () => {
+    const view = toFlagView(row({ detail: CRITERIA_DETAIL }));
+    expect(view.correction).toBeNull();
+  });
+
+  it('a metric flag with a suggestion but no correction → suggestion shown, no button', () => {
+    const view = toFlagView(
+      row({
+        action: 'flag.metric_deviation',
+        detail: { category: 'metric', metric: 'success_rate', expected: 0.7, actual: 0.4, suggestedAction: 'Review the runs.' },
+      }),
+    );
+    expect(view.suggestedAction).toBe('Review the runs.');
+    expect(view.correction).toBeNull();
+  });
+});
+
 describe('toFlagView — defensive against unknown / malformed detail', () => {
   it('never throws on null detail and defaults sensibly', () => {
     const view = toFlagView(row({ detail: null }));

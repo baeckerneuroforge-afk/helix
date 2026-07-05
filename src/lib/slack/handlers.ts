@@ -36,10 +36,12 @@
 // defer.
 import { logAudit } from '../audit';
 import { enforceChatRetention } from '../lifecycle';
+import { CorrectionBadRequestError, startCorrectionRun } from '../loop/correct';
 import { answerQuestion, loadChatHistory } from '../rag';
 import { approve, getSkill, reject, startRun, type SkillJson } from '../skills';
 import { withTenant } from '../tenant';
 import { postSlackMessage } from './client';
+import { CORRECT_ACTION_ID, decodeCorrectionValue } from './correction';
 import { deferWork } from './defer';
 import { claimSlackEvent, cleanupProcessedSlackEvents } from './idempotency';
 import { checkRateLimit, clientKey } from './ratelimit';
@@ -468,7 +470,15 @@ export async function handleSlackInteractions(req: Request): Promise<Response> {
   if (installation instanceof Response) return installation;
   const { orgId, botTokenRef } = installation;
 
+  // "Start correction" button (autonomy 'suggest'): starts a re-run of the
+  // flagged skill through the NORMAL approval gate — it never approves anything.
+  // Handled before the approve/reject dispatch so its own action id is routed
+  // here rather than falling through to "ignored".
   const action = payload.actions?.[0];
+  if (action?.action_id === CORRECT_ACTION_ID) {
+    return handleCorrectionClick(payload, orgId, botTokenRef, action.value);
+  }
+
   // 'ergane_*' bleibt akzeptiert: Approval-Buttons, die vor dem Rebrand zu
   // helix.ai gepostet wurden, müssen klickbar bleiben.
   const decision =
@@ -556,6 +566,101 @@ export async function handleSlackInteractions(req: Request): Promise<Response> {
     },
     {
       label: 'interactions:decision',
+      onFailure: () => notify(WORK_FAILED, true),
+    },
+  );
+
+  return json({ ok: true });
+}
+
+/**
+ * "Start correction" button: replay the flagged skill through the normal
+ * approval gate. Same gate order as approve/reject — LINKED user only (fail-
+ * closed), one-click idempotency, then defer the actual start. Starting a
+ * correction is a MEMBER action (like `/helix skill`); the approval it may
+ * trigger is role-gated later by the engine, exactly as for any run. This
+ * handler never approves.
+ */
+async function handleCorrectionClick(
+  payload: SlackInteractionPayload,
+  orgId: string,
+  botTokenRef: string | null | undefined,
+  rawValue: string | undefined,
+): Promise<Response> {
+  const ref = decodeCorrectionValue(rawValue);
+  const slackUserId = payload.user?.id;
+  const teamId = payload.team?.id;
+  const channel = payload.channel?.id;
+  const threadTs = payload.message?.thread_ts ?? payload.message?.ts;
+
+  const notify = async (text: string, ephemeral: boolean): Promise<void> => {
+    if (!channel) return;
+    await postSlackMessage({
+      channel,
+      thread_ts: threadTs,
+      text,
+      botTokenRef,
+      ...(ephemeral && slackUserId ? { ephemeralUserId: slackUserId } : {}),
+    });
+  };
+
+  if (!ref) return new Response('ignored', { status: 200 });
+
+  // Gate 3, fail-closed: only a LINKED Slack user may start a correction.
+  const link = await getSlackUserLink(orgId, slackUserId);
+  if (!link) {
+    await auditSlack(orgId, slackUserId, 'slack.correction_denied', ref.sourceRunId, {
+      slackTeamId: teamId,
+      slackUserId,
+      reason: 'slack user not linked to a membership',
+    });
+    await notify(NOT_LINKED, true);
+    return json({ response_type: 'ephemeral', text: NOT_LINKED });
+  }
+
+  // Gate 4: one click = one start attempt, even if Slack redelivers it.
+  const eventKey = `interactions:${payload.trigger_id ?? `correct:${teamId}:${slackUserId}:${ref.sourceRunId}`}`;
+  if (!(await claimSlackEvent(orgId, eventKey))) {
+    return new Response('duplicate delivery ignored', { status: 200 });
+  }
+  deferClaimCleanup(orgId);
+
+  // Ack-then-work: the correction starts after the 200. The trigger is audited
+  // inside startCorrectionRun; here we only report the outcome into the thread.
+  deferWork(
+    async () => {
+      try {
+        const result = await startCorrectionRun({
+          orgId,
+          actorUserId: link.userId,
+          skillKey: ref.skillKey,
+          sourceRunId: ref.sourceRunId,
+        });
+        const tail = result.awaitingApproval
+          ? ' — awaiting approval'
+          : ` — status: *${result.status}*`;
+        await notify(
+          `Correction started by <@${slackUserId}> (run \`${result.runId}\`)${tail}`,
+          false,
+        );
+      } catch (err) {
+        const message =
+          err instanceof CorrectionBadRequestError
+            ? err.message
+            : err instanceof Error
+              ? err.message
+              : String(err);
+        await auditSlack(orgId, slackUserId, 'slack.correction_denied', ref.sourceRunId, {
+          slackTeamId: teamId,
+          slackUserId,
+          userId: link.userId,
+          reason: message,
+        });
+        await notify(`Could not start correction: ${message}`, true);
+      }
+    },
+    {
+      label: 'interactions:correction',
       onFailure: () => notify(WORK_FAILED, true),
     },
   );

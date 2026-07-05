@@ -195,6 +195,12 @@ export const en = {
     viewArtifact: 'Open deliverable →',
     // The correction proposal (autonomy 'suggest'/'autonomous'), when present.
     suggested: 'Suggested',
+    // The "start correction" button (only when a re-runnable correction exists).
+    startCorrection: 'Start correction',
+    startingCorrection: 'Starting…',
+    correctionStarted: 'Correction started — awaiting approval.',
+    correctionStartedNoGate: 'Correction started.',
+    correctionFailed: 'Could not start the correction.',
   },
 
   value: {
@@ -530,8 +536,46 @@ export const en = {
       company: 'Company details',
       value: 'Value assumptions',
       slack: 'Slack',
+      loop: 'Loop',
       language: 'Language',
       data: 'Data & deletion',
+    },
+    loop: {
+      autonomyTitle: 'Autonomy level',
+      autonomyHint:
+        'How sharply the loop acts on a deviation. The default only reports — it never changes anything on its own.',
+      levelReport: 'Report',
+      levelReportDesc:
+        'Default. A deviation is flagged and a notification is sent. You adjust. Nothing runs automatically.',
+      levelSuggest: 'Suggest',
+      levelSuggestDesc:
+        'As report, plus: a flag carries a correction proposal — a re-run of the same skill with the same inputs. You start it with one click; the run still goes through the normal approval gate.',
+      levelAutonomous: 'Autonomous',
+      levelAutonomousDesc:
+        'The loop starts the correction itself — but it still goes through the normal approval gate (a human approves or rejects). The loop can start a run, never approve one.',
+      autonomousNotActive:
+        'Not active yet: this level behaves like “Suggest” for now. Automatic starting arrives in a later step.',
+      defaultBadge: 'Default',
+      save: 'Save autonomy level',
+      thresholdsTitle: 'Process-metric thresholds',
+      thresholdsHint:
+        'What the periodic check compares against. Read-only for now — a deviation raises a flag.',
+      metric: 'Metric',
+      target: 'Target',
+      direction: 'Healthy when',
+      atLeast: '≥ target',
+      atMost: '≤ target',
+      metricNames: {
+        success_rate: 'Success rate',
+        approval_rate: 'Approval rate',
+        iteration_rate: 'Iterations per client + skill',
+        feedback_negative_rate: 'Negative chat feedback',
+      } as Record<string, string>,
+      criteriaTitle: 'Active acceptance criteria',
+      criteriaHint:
+        'What each finished deliverable is checked against. Read-only for now — a violation raises a flag.',
+      criteriaType: (type: string) => `Type: ${type}`,
+      criterion: 'Criterion',
     },
     governance: {
       presetsTitle: 'Industry presets',

@@ -1,8 +1,14 @@
 import type { Prisma } from '@prisma/client';
 import { logAudit } from '../audit';
+import { getDictionary } from '../i18n';
+import { getSkill } from '../skills';
 import { withTenant } from '../tenant';
 import { frameworkCriteria } from './criteria/framework';
 import type { AcceptanceCriteriaSet, CriterionResult } from './criteria/types';
+import { toFlagView } from './flags-view';
+import { notifyFlag } from './notify';
+import { resolveAutonomyContext } from './settings';
+import { buildSuggestedActionText, type CorrectionRef } from './suggest';
 import { observationForArtifact } from './sources/deliverable';
 
 const LOOP_ACTOR = 'loop-engine';
@@ -80,39 +86,107 @@ export async function evaluateDeliverableCriteria(
     flagRaised,
   };
 
-  // SHORT transaction: write trace + flag audit entry.
-  await withTenant(orgId, async (tx) => {
+  // BEFORE the flag tx: build the correction proposal (autonomy 'suggest'/
+  // 'autonomous'). Its reads (autonomy, org locale, client name) run in their
+  // OWN short tx so they can NEVER abort the flag write — a criteria flag must be
+  // persisted exactly as reliably in 'suggest' mode as in 'report' mode. Returns
+  // {} in 'report' mode. Only builds when a flag will actually be raised.
+  const clientId =
+    typeof observation.metadata.clientId === 'string' ? observation.metadata.clientId : null;
+  const proposal = flagRaised ? await buildProposal(orgId, skillKey, runId, clientId) : {};
+
+  // SHORT transaction: write trace + flag audit entry ONLY. No proposal reads
+  // here — the tx stays minimal (trace update + one logAudit), so a flag is
+  // never lost to an unrelated read failing.
+  const flagRow = await withTenant(orgId, async (tx) => {
     await tx.skillRun.update({
       where: { id: runId },
       data: { trace: trace as unknown as Prisma.InputJsonValue },
     });
 
-    if (flagRaised) {
-      const failed = results.filter((r) => !r.passed);
-      await logAudit(tx, {
-        orgId,
-        actorId: LOOP_ACTOR,
-        actorType: 'agent',
-        action: 'flag.criteria_violated',
-        target: artifactId,
-        detail: {
-          category: 'criteria',
-          type: artifactType,
-          skillKey,
-          runId,
-          failedCriteria: failed.map((r) => ({
-            criterion: r.key,
-            expected: r.detail.expected,
-            actual: r.detail.actual,
-            message: r.detail.message,
-          })),
-          passedCount,
-          failedCount,
-          severity: failedCount >= 3 ? 'critical' : 'warning',
-        },
-      });
-    }
+    if (!flagRaised) return null;
+
+    const failed = results.filter((r) => !r.passed);
+    return logAudit(tx, {
+      orgId,
+      actorId: LOOP_ACTOR,
+      actorType: 'agent',
+      action: 'flag.criteria_violated',
+      target: artifactId,
+      detail: {
+        category: 'criteria',
+        type: artifactType,
+        skillKey,
+        runId,
+        failedCriteria: failed.map((r) => ({
+          criterion: r.key,
+          expected: r.detail.expected,
+          actual: r.detail.actual,
+          message: r.detail.message,
+        })),
+        passedCount,
+        failedCount,
+        severity: failedCount >= 3 ? 'critical' : 'warning',
+        // Only present under 'suggest'/'autonomous'; absent under 'report'.
+        ...proposal,
+      },
+    });
   });
 
+  // AFTER the commit: best-effort notification (e-mail + Slack). notifyFlag
+  // never throws; a failure here leaves the flag — which already exists —
+  // untouched. This is the ONLY thing that happens outside the flag tx.
+  if (flagRow) {
+    await notifyFlag(orgId, toFlagView(flagRow));
+  }
+
   return trace;
+}
+
+/**
+ * Build the correction proposal for a criteria flag, gated on the tenant's
+ * autonomy level. Returns `{}` under 'report' (no proposal, no button) and
+ * `{ suggestedAction, correction }` under 'suggest'/'autonomous'. Opens its OWN
+ * short tx for the reads (autonomy, org locale, client name) so it is fully
+ * decoupled from the flag-write tx — and NEVER throws: any read failure degrades
+ * to `{}` (no proposal) rather than losing the flag. The returned `correction`
+ * is the re-run pointer /api/loop/correct replays.
+ */
+async function buildProposal(
+  orgId: string,
+  skillKey: string,
+  runId: string,
+  clientId: string | null,
+): Promise<{ suggestedAction?: string; correction?: CorrectionRef }> {
+  try {
+    const { locale, suggest, clientName } = await withTenant(orgId, async (tx) => {
+      const ctx = await resolveAutonomyContext(tx, orgId);
+      let name: string | null = null;
+      if (ctx.suggest && clientId) {
+        const client = await tx.client.findUnique({
+          where: { id: clientId },
+          select: { name: true },
+        });
+        name = client?.name ?? null;
+      }
+      return { locale: ctx.locale, suggest: ctx.suggest, clientName: name };
+    });
+    if (!suggest) return {};
+
+    // Localized skill title, falling back to the registry title then the key.
+    let skillTitle = skillKey;
+    try {
+      skillTitle = getDictionary(locale).skillTitles[skillKey] ?? getSkill(skillKey).title;
+    } catch {
+      // Unknown skill key — keep the key as the title rather than throwing.
+    }
+
+    return {
+      suggestedAction: buildSuggestedActionText(locale, skillTitle, clientName),
+      correction: { skillKey, sourceRunId: runId, clientId },
+    };
+  } catch {
+    // A read failed — degrade to no proposal. The flag is written regardless.
+    return {};
+  }
 }
