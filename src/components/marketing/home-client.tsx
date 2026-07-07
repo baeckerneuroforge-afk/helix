@@ -139,7 +139,13 @@ export function SkillRunSignature() {
           <div className="m-skillrun__side-label">Input</div>
           <div className="m-skillrun__chip" style={{ "--brand": "#EA4335" } as React.CSSProperties}>
             <span style={{ display: "inline-flex" }}>
-              <BrandLogo slug="gmail" name="Gmail" size={20} />
+              <BrandLogo
+                name="Gmail"
+                gilbarbara="google-gmail"
+                simpleicons="gmail"
+                fallbackColor="EA4335"
+                size={20}
+              />
             </span>
             Gmail
           </div>
@@ -226,30 +232,38 @@ export function AutonomySelector() {
 
 /* ===== LogoGrid ===== */
 const LOGO_GRID = [
-  { name: "Slack",      slug: "slack",             tint: "#ECB22E" },
-  { name: "Zoom",       slug: "zoom",              tint: "#0B5CFF" },
-  { name: "Teams",      slug: "microsoftteams",    tint: "#6264A7" },
-  { name: "Gmail",      slug: "gmail",             tint: "#EA4335" },
-  { name: "Outlook",    slug: "microsoftoutlook",  tint: "#0078D4" },
-  { name: "Notion",     slug: "notion",            tint: "#8A8880" },
-  { name: "Drive",      slug: "googledrive",       tint: "#0F9D58" },
-  { name: "Calendar",   slug: "googlecalendar",    tint: "#4285F4" },
-  { name: "Linear",     slug: "linear",            tint: "#5E6AD2" },
-  { name: "GitHub",     slug: "github",            tint: "#8A8880" },
-  { name: "HubSpot",    slug: "hubspot",           tint: "#FF7A59" },
-  { name: "Salesforce", slug: "salesforce",         tint: "#00A1E0" },
-];
+  { name: "Slack",      gilbarbara: "slack-icon",      color: "611F69", tint: "ECB22E", simpleicons: "slack" },
+  { name: "Zoom",       gilbarbara: "zoom-icon",       color: "0B5CFF", tint: "0B5CFF", simpleicons: "zoom" },
+  { name: "Teams",      gilbarbara: "microsoft-teams", color: "6264A7", tint: "6264A7", simpleicons: "microsoftteams" },
+  { name: "Gmail",      gilbarbara: "google-gmail",    color: "EA4335", tint: "EA4335", simpleicons: "gmail" },
+  { name: "Outlook",    svgl: "microsoft-outlook",     color: "0078D4", tint: "0078D4", simpleicons: "microsoftoutlook" },
+  { name: "Notion",     gilbarbara: "notion-icon",     color: "111111", tint: "8A8880", simpleicons: "notion" },
+  { name: "Drive",      gilbarbara: "google-drive",    color: "4285F4", tint: "0F9D58", simpleicons: "googledrive" },
+  { name: "Calendar",   gilbarbara: "google-calendar", color: "4285F4", tint: "4285F4", simpleicons: "googlecalendar" },
+  { name: "Linear",     gilbarbara: "linear-icon",     color: "5E6AD2", tint: "5E6AD2", simpleicons: "linear" },
+  { name: "GitHub",     gilbarbara: "github-icon",     color: "181717", tint: "8A8880", simpleicons: "github" },
+  { name: "HubSpot",    src: "https://cdn.simpleicons.org/hubspot/FF7A59", color: "FF7A59", tint: "FF7A59", simpleicons: "hubspot" },
+  { name: "Salesforce", gilbarbara: "salesforce",      color: "00A1E0", tint: "00A1E0", simpleicons: "salesforce" },
+] as const;
 
 export function LogoGrid() {
   return (
-    <div style={{ marginTop: 40, display: "grid", gridTemplateColumns: "repeat(12, minmax(0, 1fr))", gap: 12 }}>
+    <div
+      style={{
+        marginTop: 40,
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fill, minmax(72px, 1fr))",
+        gap: 12,
+      }}
+    >
       {LOGO_GRID.map((t, i) => (
         <div
           key={t.name}
           className="m-logo-tile m-rise-stagger"
           style={{
             "--i": i,
-            "--tint": t.tint,
+            "--brand": `#${t.color}`,
+            "--tint": `#${t.tint}`,
             display: "flex",
             aspectRatio: "1 / 1",
             alignItems: "center",
@@ -264,13 +278,175 @@ export function LogoGrid() {
         >
           <span className="m-logo-tile__glow" aria-hidden />
           <BrandLogo
-            slug={t.slug}
             name={t.name}
-            tint={t.tint}
+            gilbarbara={"gilbarbara" in t ? t.gilbarbara : undefined}
+            svgl={"svgl" in t ? t.svgl : undefined}
+            src={"src" in t ? t.src : undefined}
+            simpleicons={t.simpleicons}
+            fallbackColor={t.color}
             size={30}
           />
         </div>
       ))}
+    </div>
+  );
+}
+
+/* ===== HomeArchitectureDiagram — HTML+CSS grid with real product logos ===== */
+const INPUT_TOOLS = [
+  { name: "Gmail",  gilbarbara: "google-gmail", color: "EA4335", tint: "EA4335" },
+  { name: "Zoom",   gilbarbara: "zoom-icon",    color: "0B5CFF", tint: "0B5CFF" },
+  { name: "Slack",  gilbarbara: "slack-icon",   color: "611F69", tint: "ECB22E" },
+  { name: "Notion", gilbarbara: "notion-icon",  color: "111111", tint: "8A8880" },
+  { name: "Linear", gilbarbara: "linear-icon",  color: "5E6AD2", tint: "5E6AD2" },
+  { name: "GitHub", gilbarbara: "github-icon",  color: "181717", tint: "8A8880" },
+];
+
+const CORE_BLOCKS = [
+  { t: "Knowledge",  d: "grounded, cited" },
+  { t: "Skills",     d: "agents that act" },
+  { t: "Governance", d: "gates & audit" },
+  { t: "Memory",     d: "per customer" },
+];
+
+const ARCH_OUTPUTS = ["Deliverables", "Flags & alerts", "Actions in your tools"];
+
+export function HomeArchitectureDiagram() {
+  return (
+    <div className="m-arch-diagram">
+      <div className="m-arch-diagram__topbar">
+        <span className="m-arch-diagram__eyebrow">
+          architecture · input → core → output
+        </span>
+        <span className="m-arch-diagram__eyebrow">v1 · always-on loop</span>
+      </div>
+
+      <div className="m-arch-diagram__grid">
+        {/* INPUT column */}
+        <div className="m-arch-diagram__col">
+          <div className="m-arch-diagram__collabel">Input</div>
+          <ul className="m-arch-diagram__stack">
+            {INPUT_TOOLS.map((t, i) => (
+              <li
+                key={t.name}
+                className="m-arch-diagram__tool m-rise-stagger"
+                style={{
+                  "--i": i,
+                  "--brand": `#${t.color}`,
+                  "--tint": `#${t.tint}`,
+                } as React.CSSProperties}
+              >
+                <span className="m-arch-diagram__tool-icon">
+                  <BrandLogo
+                    name={t.name}
+                    gilbarbara={t.gilbarbara}
+                    simpleicons={t.name.toLowerCase().replace(/ /g, "")}
+                    fallbackColor={t.color}
+                    size={22}
+                  />
+                </span>
+                <span className="m-arch-diagram__tool-name">{t.name}</span>
+                <span className="m-arch-diagram__tool-arrow" aria-hidden>→</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Connector rail: input → core */}
+        <svg
+          className="m-arch-diagram__rail"
+          viewBox="0 0 120 400"
+          preserveAspectRatio="none"
+          aria-hidden
+        >
+          {INPUT_TOOLS.map((_, i) => {
+            const y = 30 + i * 58;
+            return (
+              <path
+                key={i}
+                d={`M 0 ${y} C 60 ${y}, 60 200, 120 200`}
+                fill="none"
+                stroke="#171310"
+                strokeOpacity="0.28"
+                strokeWidth="1.2"
+                className="m-dash-flow-slow"
+                strokeDasharray="3 5"
+              />
+            );
+          })}
+        </svg>
+
+        {/* CORE column */}
+        <div className="m-arch-diagram__col m-arch-diagram__col--core">
+          <div className="m-arch-diagram__collabel m-arch-diagram__collabel--core">
+            helix · core
+          </div>
+          <div className="m-arch-diagram__core">
+            {CORE_BLOCKS.map((b, i) => (
+              <div
+                key={b.t}
+                className="m-arch-diagram__block m-rise-stagger"
+                style={{ "--i": i } as React.CSSProperties}
+              >
+                <div className="m-arch-diagram__block-title">{b.t}</div>
+                <div className="m-arch-diagram__block-sub">{b.d}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Connector rail: core → output */}
+        <svg
+          className="m-arch-diagram__rail"
+          viewBox="0 0 120 400"
+          preserveAspectRatio="none"
+          aria-hidden
+        >
+          {ARCH_OUTPUTS.map((_, i) => {
+            const y = 90 + i * 100;
+            return (
+              <path
+                key={i}
+                d={`M 0 200 C 60 200, 60 ${y}, 120 ${y}`}
+                fill="none"
+                stroke="#BE5A2C"
+                strokeOpacity="0.7"
+                strokeWidth="1.4"
+                className="m-dash-flow"
+                strokeDasharray="4 4"
+              />
+            );
+          })}
+        </svg>
+
+        {/* OUTPUT column */}
+        <div className="m-arch-diagram__col">
+          <div className="m-arch-diagram__collabel">Output</div>
+          <ul className="m-arch-diagram__stack m-arch-diagram__stack--out">
+            {ARCH_OUTPUTS.map((n, i) => (
+              <li
+                key={n}
+                className="m-arch-diagram__out m-rise-stagger"
+                style={{ "--i": i + 3 } as React.CSSProperties}
+              >
+                <span
+                  className="m-arch-diagram__tool-arrow"
+                  style={{ color: "var(--m-ember)" }}
+                  aria-hidden
+                >
+                  →
+                </span>
+                <span className="m-arch-diagram__tool-name">{n}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      <div className="m-arch-diagram__loopband">
+        <span className="m-arch-diagram__loopdot" />
+        <span>The loop · observe · compare · flag · correct</span>
+      </div>
     </div>
   );
 }

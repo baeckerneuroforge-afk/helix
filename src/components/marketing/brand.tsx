@@ -41,33 +41,9 @@ export function HelixMark({
         strokeWidth="6"
         strokeLinecap="round"
       />
-      <line
-        x1="24"
-        y1="14"
-        x2="40"
-        y2="14"
-        stroke={rung}
-        strokeWidth="3.5"
-        strokeLinecap="round"
-      />
-      <line
-        x1="27"
-        y1="32"
-        x2="37"
-        y2="32"
-        stroke={rung}
-        strokeWidth="3.5"
-        strokeLinecap="round"
-      />
-      <line
-        x1="24"
-        y1="48"
-        x2="40"
-        y2="48"
-        stroke={rung}
-        strokeWidth="3.5"
-        strokeLinecap="round"
-      />
+      <line x1="24" y1="14" x2="40" y2="14" stroke={rung} strokeWidth="3.5" strokeLinecap="round" />
+      <line x1="27" y1="32" x2="37" y2="32" stroke={rung} strokeWidth="3.5" strokeLinecap="round" />
+      <line x1="24" y1="48" x2="40" y2="48" stroke={rung} strokeWidth="3.5" strokeLinecap="round" />
     </svg>
   );
 }
@@ -80,284 +56,213 @@ export function HelixWordmark({
   tone?: "light" | "dark";
   className?: string;
 }) {
-  const textColor = tone === "dark" ? "#E8E8EC" : "#17181C";
+  const helix = tone === "dark" ? "#EDE9E1" : "#15161B";
+  const ai = tone === "dark" ? "#F26B1F" : "#D6531A";
   return (
     <Link
       href="/"
-      className={`m-flex m-items-center m-gap-2 ${className}`}
+      className={`m-flex m-items-center m-gap-3 ${className}`}
       style={{ textDecoration: "none" }}
+      aria-label="helix.ai — home"
     >
       <HelixMark size={28} tone={tone} />
       <span
         style={{
-          fontFamily:
-            "var(--font-display, 'Fraunces', Georgia, serif)",
-          fontSize: 19,
-          fontWeight: 500,
-          letterSpacing: "-0.02em",
-          color: textColor,
+          fontFamily: 'var(--font-display, "Fraunces", Georgia, serif)',
+          fontWeight: 600,
+          letterSpacing: "-0.03em",
+          fontSize: 22,
+          lineHeight: 1,
         }}
       >
-        helix
-        <span style={{ fontWeight: 400, opacity: 0.5 }}>.ai</span>
+        <span style={{ color: helix }}>helix</span>
+        <span style={{ color: ai }}>.ai</span>
       </span>
     </Link>
   );
 }
 
-/* ---------- DNAStrand — decorative double-helix SVG background ---------- */
+/**
+ * DNAStrand — the recurring double-strand motif for backgrounds.
+ * Two intertwining sine curves (steel + ember) with occasional rungs.
+ * Extremely subtle by default; caller controls opacity via className/style.
+ */
 export function DNAStrand({
-  variant = "vertical",
-  tone = "light",
   className = "",
+  tone = "light",
+  variant = "vertical",
+  style,
 }: {
-  variant?: "vertical" | "diagonal";
-  tone?: "light" | "dark";
   className?: string;
+  tone?: "light" | "dark";
+  variant?: "vertical" | "diagonal";
+  style?: React.CSSProperties;
 }) {
-  const left = tone === "dark" ? "#3D4670" : "#39426B";
-  const right = tone === "dark" ? "#A0522D" : "#D6531A";
-  const rungColor = tone === "dark" ? "#4A4C55" : "#E0DDD6";
-  const opacity = tone === "dark" ? 0.18 : 0.12;
+  const steel = tone === "dark" ? "#8A93C7" : "#39426B";
+  const ember = tone === "dark" ? "#F26B1F" : "#D6531A";
+  const rung = tone === "dark" ? "#6C6E78" : "#85878F";
 
-  if (variant === "diagonal") {
-    return (
-      <svg
-        viewBox="0 0 200 600"
-        xmlns="http://www.w3.org/2000/svg"
-        className={className}
-        aria-hidden="true"
-        style={{ opacity }}
-      >
-        <path
-          d="M40 0 C40 80, 160 120, 160 200 C160 280, 40 320, 40 400 C40 480, 160 520, 160 600"
-          fill="none"
-          stroke={left}
-          strokeWidth="3"
-          strokeLinecap="round"
-        />
-        <path
-          d="M160 0 C160 80, 40 120, 40 200 C40 280, 160 320, 160 400 C160 480, 40 520, 40 600"
-          fill="none"
-          stroke={right}
-          strokeWidth="3"
-          strokeLinecap="round"
-        />
-        {[60, 100, 160, 200, 260, 300, 360, 400, 460, 500].map(
-          (y) => (
-            <line
-              key={y}
-              x1="70"
-              y1={y}
-              x2="130"
-              y2={y}
-              stroke={rungColor}
-              strokeWidth="2"
-              strokeLinecap="round"
-            />
-          )
-        )}
-      </svg>
-    );
-  }
+  // 8 crossovers along a 1600px vertical run — two sine paths that swap
+  // sides every 200px. Rungs sit at each crossover.
+  const path = (phase: 0 | 1) => {
+    const cx = 100;
+    const amp = 60;
+    const step = 200;
+    let d = `M ${cx + (phase === 0 ? -amp : amp)} 0`;
+    for (let i = 1; i <= 8; i++) {
+      const y1 = (i - 1) * step + step / 2;
+      const y2 = i * step;
+      const to = phase === 0 ? (i % 2 === 0 ? -amp : amp) : i % 2 === 0 ? amp : -amp;
+      const from = phase === 0 ? (i % 2 === 0 ? amp : -amp) : i % 2 === 0 ? -amp : amp;
+      d += ` C ${cx + from} ${y1}, ${cx + to} ${y1}, ${cx + to} ${y2}`;
+    }
+    return d;
+  };
+
+  const rungs = Array.from({ length: 8 }, (_, i) => (
+    <line
+      key={i}
+      x1={70}
+      x2={130}
+      y1={(i + 0.5) * 200}
+      y2={(i + 0.5) * 200}
+      stroke={rung}
+      strokeWidth="4"
+      strokeLinecap="round"
+    />
+  ));
+
+  const rotate = variant === "diagonal" ? "rotate(-12deg)" : undefined;
 
   return (
     <svg
-      viewBox="0 0 100 600"
+      viewBox="0 0 200 1600"
+      preserveAspectRatio="xMidYMid slice"
       xmlns="http://www.w3.org/2000/svg"
-      className={className}
       aria-hidden="true"
-      style={{ opacity }}
+      className={className}
+      style={{ transform: rotate, ...style }}
     >
-      <path
-        d="M20 0 C20 60, 80 90, 80 150 C80 210, 20 240, 20 300 C20 360, 80 390, 80 450 C80 510, 20 540, 20 600"
-        fill="none"
-        stroke={left}
-        strokeWidth="2.5"
-        strokeLinecap="round"
-      />
-      <path
-        d="M80 0 C80 60, 20 90, 20 150 C20 210, 80 240, 80 300 C80 360, 20 390, 20 450 C20 510, 80 540, 80 600"
-        fill="none"
-        stroke={right}
-        strokeWidth="2.5"
-        strokeLinecap="round"
-      />
-      {[30, 75, 120, 165, 210, 255, 300, 345, 390, 435, 480, 525, 570].map(
-        (y) => (
-          <line
-            key={y}
-            x1="30"
-            y1={y}
-            x2="70"
-            y2={y}
-            stroke={rungColor}
-            strokeWidth="1.5"
-            strokeLinecap="round"
-          />
-        )
-      )}
+      <path d={path(0)} stroke={steel} strokeWidth="6" strokeLinecap="round" fill="none" />
+      <path d={path(1)} stroke={ember} strokeWidth="6" strokeLinecap="round" fill="none" />
+      {rungs}
     </svg>
   );
 }
 
-/* ---------- Rung — horizontal divider with colored dots ---------- */
+/**
+ * Rung — a short horizontal divider: thin grey line with a steel dot on
+ * one end and an ember dot on the other.
+ */
 export function Rung({ className = "" }: { className?: string }) {
   return (
     <div
-      className={className}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 0,
-        width: "100%",
-      }}
+      className={`m-flex m-items-center m-gap-2 ${className}`}
+      style={{ display: "inline-flex" }}
       aria-hidden="true"
     >
-      <span
-        style={{
-          width: 6,
-          height: 6,
-          borderRadius: "999px",
-          background: "#39426B",
-          flexShrink: 0,
-        }}
-      />
-      <span
-        style={{
-          flex: 1,
-          height: 1,
-          background: "var(--m-hairline, #E9E8E3)",
-        }}
-      />
-      <span
-        style={{
-          width: 6,
-          height: 6,
-          borderRadius: "999px",
-          background: "#D6531A",
-          flexShrink: 0,
-        }}
-      />
+      <span style={{ width: 6, height: 6, borderRadius: 999, background: "#39426B" }} />
+      <span style={{ height: 1, width: 64, background: "#85878F", opacity: 0.5 }} />
+      <span style={{ width: 6, height: 6, borderRadius: 999, background: "#D6531A" }} />
     </div>
   );
 }
 
-/* ---------- HelixBand — horizontal double-helix ribbon divider ---------- */
-export function HelixBand({ className = "" }: { className?: string }) {
-  return (
-    <div
-      className={className}
-      style={{ width: "100%", overflow: "hidden" }}
-      aria-hidden="true"
-    >
-      <svg
-        viewBox="0 0 1200 40"
-        xmlns="http://www.w3.org/2000/svg"
-        style={{ width: "100%", height: 40, display: "block" }}
-        preserveAspectRatio="none"
-      >
-        <path
-          d="M0 20 C100 5, 200 35, 300 20 C400 5, 500 35, 600 20 C700 5, 800 35, 900 20 C1000 5, 1100 35, 1200 20"
-          fill="none"
-          stroke="#39426B"
-          strokeWidth="2"
-          strokeLinecap="round"
-          opacity="0.15"
-        />
-        <path
-          d="M0 20 C100 35, 200 5, 300 20 C400 35, 500 5, 600 20 C700 35, 800 5, 900 20 C1000 35, 1100 5, 1200 20"
-          fill="none"
-          stroke="#D6531A"
-          strokeWidth="2"
-          strokeLinecap="round"
-          opacity="0.15"
-        />
-        {[75, 150, 225, 375, 450, 525, 675, 750, 825, 975, 1050, 1125].map(
-          (x) => (
-            <line
-              key={x}
-              x1={x}
-              y1="15"
-              x2={x}
-              y2="25"
-              stroke="#85878F"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              opacity="0.12"
-            />
-          )
-        )}
-      </svg>
-    </div>
-  );
-}
-
-/* ---------- HelixOrbit — circular double-helix decorative ring ---------- */
-export function HelixOrbit({
-  size = 280,
+/**
+ * HelixBand — a horizontal double-strand ribbon used as a divider.
+ */
+export function HelixBand({
   className = "",
+  tone = "light",
+  height = 64,
+  crossovers = 12,
+}: {
+  className?: string;
+  tone?: "light" | "dark";
+  height?: number;
+  crossovers?: number;
+}) {
+  const steel = tone === "dark" ? "#8A93C7" : "#39426B";
+  const ember = tone === "dark" ? "#F26B1F" : "#D6531A";
+  const rung = tone === "dark" ? "#6C6E78" : "#85878F";
+
+  const step = 200;
+  const totalW = step * crossovers;
+  const cy = 50;
+  const amp = 34;
+
+  const path = (phase: 0 | 1) => {
+    let d = `M 0 ${cy + (phase === 0 ? -amp : amp)}`;
+    for (let i = 1; i <= crossovers; i++) {
+      const x1 = (i - 1) * step + step / 2;
+      const x2 = i * step;
+      const to = phase === 0 ? (i % 2 === 0 ? -amp : amp) : i % 2 === 0 ? amp : -amp;
+      const from = phase === 0 ? (i % 2 === 0 ? amp : -amp) : i % 2 === 0 ? -amp : amp;
+      d += ` C ${x1} ${cy + from}, ${x1} ${cy + to}, ${x2} ${cy + to}`;
+    }
+    return d;
+  };
+
+  const rungs = Array.from({ length: crossovers }, (_, i) => (
+    <line
+      key={i}
+      y1={cy - 26}
+      y2={cy + 26}
+      x1={(i + 0.5) * step}
+      x2={(i + 0.5) * step}
+      stroke={rung}
+      strokeWidth="3"
+      strokeLinecap="round"
+    />
+  ));
+
+  return (
+    <svg
+      viewBox={`0 0 ${totalW} 100`}
+      preserveAspectRatio="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+      className={className}
+      style={{ height, width: "100%", display: "block" }}
+    >
+      <path d={path(0)} stroke={steel} strokeWidth="3" strokeLinecap="round" fill="none" />
+      <path d={path(1)} stroke={ember} strokeWidth="3" strokeLinecap="round" fill="none" />
+      {rungs}
+    </svg>
+  );
+}
+
+/**
+ * HelixOrbit — a circular double-helix ring used as a decorative badge.
+ */
+export function HelixOrbit({
+  size = 200,
+  className = "",
+  tone = "light",
 }: {
   size?: number;
   className?: string;
+  tone?: "light" | "dark";
 }) {
-  const r = size / 2;
-  const cx = r;
-  const cy = r;
-  const pathR = r * 0.78;
-
+  const steel = tone === "dark" ? "#8A93C7" : "#39426B";
+  const ember = tone === "dark" ? "#F26B1F" : "#D6531A";
+  const rung = tone === "dark" ? "#6C6E78" : "#85878F";
   return (
     <svg
       width={size}
       height={size}
-      viewBox={`0 0 ${size} ${size}`}
+      viewBox="0 0 200 200"
       xmlns="http://www.w3.org/2000/svg"
-      className={`m-spin-slow ${className}`}
       aria-hidden="true"
-      style={{ opacity: 0.12 }}
+      className={className}
     >
-      {/* Outer strand */}
-      <circle
-        cx={cx}
-        cy={cy}
-        r={pathR}
-        fill="none"
-        stroke="#39426B"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeDasharray="12 8"
-      />
-      {/* Inner strand */}
-      <circle
-        cx={cx}
-        cy={cy}
-        r={pathR * 0.85}
-        fill="none"
-        stroke="#D6531A"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeDasharray="10 10"
-      />
-      {/* Rungs connecting the two circles */}
-      {[0, 45, 90, 135, 180, 225, 270, 315].map((deg) => {
-        const rad = (deg * Math.PI) / 180;
-        const x1 = cx + pathR * Math.cos(rad);
-        const y1 = cy + pathR * Math.sin(rad);
-        const x2 = cx + pathR * 0.85 * Math.cos(rad);
-        const y2 = cy + pathR * 0.85 * Math.sin(rad);
-        return (
-          <line
-            key={deg}
-            x1={x1}
-            y1={y1}
-            x2={x2}
-            y2={y2}
-            stroke="#85878F"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-          />
-        );
-      })}
+      <ellipse cx="100" cy="100" rx="82" ry="30" fill="none" stroke={steel} strokeWidth="2.5" transform="rotate(-30 100 100)" />
+      <ellipse cx="100" cy="100" rx="82" ry="30" fill="none" stroke={ember} strokeWidth="2.5" transform="rotate(30 100 100)" />
+      <ellipse cx="100" cy="100" rx="82" ry="30" fill="none" stroke={steel} strokeWidth="1.5" opacity="0.5" transform="rotate(90 100 100)" />
+      <line x1="18" y1="100" x2="34" y2="100" stroke={rung} strokeWidth="2" strokeLinecap="round" />
+      <line x1="166" y1="100" x2="182" y2="100" stroke={rung} strokeWidth="2" strokeLinecap="round" />
+      <circle cx="18" cy="100" r="3" fill={steel} />
+      <circle cx="182" cy="100" r="3" fill={ember} />
     </svg>
   );
 }

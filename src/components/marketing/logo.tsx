@@ -2,64 +2,101 @@
 
 import { useState } from "react";
 
-/* -------------------------------------------------------------------------- */
-/*  BrandLogo — renders a brand icon with a fallback chain:                   */
-/*    1. svgl.app CDN                                                         */
-/*    2. jsdelivr (simple-icons)                                              */
-/*    3. simpleicons.org                                                      */
-/*    4. text initial                                                         */
-/* -------------------------------------------------------------------------- */
+/**
+ * BrandLogo — real full-color product logos.
+ * Chain of fallbacks so each brand shows its true mark:
+ *   1) explicit `src` if provided
+ *   2) gilbarbara/logos via jsdelivr (multicolor)
+ *   3) svgl.app (multicolor, high fidelity)
+ *   4) simpleicons.org in brand hex
+ *   5) text initial
+ */
 
-const SVGL = (slug: string) =>
-  `https://svgl.app/library/${slug}.svg`;
-const JSDELIVR = (slug: string) =>
-  `https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/${slug}.svg`;
-const SIMPLE = (slug: string) =>
-  `https://simpleicons.org/icons/${slug}.svg`;
+/** Known brands so legacy `slug`-only callers still get multicolor marks. */
+const KNOWN: Record<
+  string,
+  { gilbarbara?: string; svgl?: string; simpleicons?: string; color?: string; src?: string }
+> = {
+  slack:              { gilbarbara: "slack-icon",       simpleicons: "slack",            color: "611F69" },
+  zoom:               { gilbarbara: "zoom-icon",        simpleicons: "zoom",             color: "0B5CFF" },
+  "microsoft-teams":  { gilbarbara: "microsoft-teams",  simpleicons: "microsoftteams",   color: "6264A7" },
+  microsoftteams:     { gilbarbara: "microsoft-teams",  simpleicons: "microsoftteams",   color: "6264A7" },
+  intercom:           { gilbarbara: "intercom-icon",    simpleicons: "intercom",         color: "1F8DED" },
+  gmail:              { gilbarbara: "google-gmail",     simpleicons: "gmail",            color: "EA4335" },
+  "microsoft-outlook":{ svgl: "microsoft-outlook",      simpleicons: "microsoftoutlook", color: "0078D4" },
+  microsoftoutlook:   { svgl: "microsoft-outlook",      simpleicons: "microsoftoutlook", color: "0078D4" },
+  notion:             { gilbarbara: "notion-icon",      simpleicons: "notion",           color: "111111" },
+  "google-drive":     { gilbarbara: "google-drive",     simpleicons: "googledrive",      color: "4285F4" },
+  googledrive:        { gilbarbara: "google-drive",     simpleicons: "googledrive",      color: "4285F4" },
+  "google-calendar":  { gilbarbara: "google-calendar",  simpleicons: "googlecalendar",   color: "4285F4" },
+  googlecalendar:     { gilbarbara: "google-calendar",  simpleicons: "googlecalendar",   color: "4285F4" },
+  confluence:         { gilbarbara: "confluence",       simpleicons: "confluence",       color: "172B4D" },
+  linear:             { gilbarbara: "linear-icon",      simpleicons: "linear",           color: "5E6AD2" },
+  github:             { gilbarbara: "github-icon",      simpleicons: "github",           color: "181717" },
+  jira:               { gilbarbara: "jira",             simpleicons: "jira",             color: "0052CC" },
+  hubspot:            { src: "https://cdn.simpleicons.org/hubspot/FF7A59", simpleicons: "hubspot", color: "FF7A59" },
+  salesforce:         { gilbarbara: "salesforce",       simpleicons: "salesforce",       color: "00A1E0" },
+  sap:                { gilbarbara: "sap",              simpleicons: "sap",              color: "0FAAFF" },
+};
 
 export interface BrandLogoProps {
-  /** slug used to resolve the SVG icon (e.g. "slack", "google-drive") */
-  slug?: string;
-  /** @deprecated use `slug` */
-  brand?: string;
-  /** human-readable label for alt text and fallback initial */
-  name?: string;
-  /** pixel size of the rendered icon */
+  name: string;
   size?: number;
-  /** optional brand color shown on hover glow */
+  /** slug on gilbarbara/logos (e.g. "slack-icon") */
+  gilbarbara?: string;
+  /** slug on svgl.app (e.g. "microsoft-outlook") */
+  svgl?: string;
+  /** slug on simpleicons.org (e.g. "slack") */
+  simpleicons?: string;
+  /** hex without '#' for the simpleicons fallback tint */
+  fallbackColor?: string;
+  /** override with an absolute URL */
+  src?: string;
+  /** legacy: single slug — resolved against known brands */
+  slug?: string;
+  /** legacy alias for `slug` */
+  brand?: string;
+  /** legacy: brand color shown in the text-initial fallback */
   tint?: string;
   className?: string;
 }
 
 export function BrandLogo({
-  slug: slugProp,
+  name,
+  size = 32,
+  gilbarbara,
+  svgl,
+  simpleicons,
+  fallbackColor,
+  src,
+  slug,
   brand,
-  name: nameProp,
-  size = 28,
   tint,
   className = "",
 }: BrandLogoProps) {
-  // `brand` is a legacy alias for `slug`
-  const slug = slugProp ?? brand ?? "unknown";
-  const name = nameProp ?? slug;
-  const [src, setSrc] = useState<string | null>(SVGL(slug));
-  const [fallbackLevel, setFallbackLevel] = useState(0);
+  const known = KNOWN[(slug ?? brand ?? name).toLowerCase()] ?? {};
+  const g = gilbarbara ?? known.gilbarbara;
+  const v = svgl ?? known.svgl;
+  const s = simpleicons ?? known.simpleicons ?? slug ?? brand;
+  const color = fallbackColor ?? known.color ?? (tint ? tint.replace("#", "") : undefined);
+  const override = src ?? known.src;
 
-  const handleError = () => {
-    if (fallbackLevel === 0) {
-      setSrc(JSDELIVR(slug));
-      setFallbackLevel(1);
-    } else if (fallbackLevel === 1) {
-      setSrc(SIMPLE(slug));
-      setFallbackLevel(2);
-    } else {
-      // All image sources exhausted — show text initial
-      setSrc(null);
-      setFallbackLevel(3);
-    }
-  };
+  const chain: string[] = [];
+  if (override) chain.push(override);
+  if (g) chain.push(`https://cdn.jsdelivr.net/gh/gilbarbara/logos/logos/${g}.svg`);
+  if (v) chain.push(`https://svgl.app/library/${v}.svg`);
+  if (s) {
+    chain.push(
+      color
+        ? `https://cdn.simpleicons.org/${s}/${color}`
+        : `https://cdn.simpleicons.org/${s}`,
+    );
+  }
 
-  if (src === null) {
+  const [idx, setIdx] = useState(0);
+  const url = chain[idx];
+
+  if (!url) {
     return (
       <span
         className={className}
@@ -70,10 +107,10 @@ export function BrandLogo({
           width: size,
           height: size,
           borderRadius: 6,
-          background: tint
-            ? `color-mix(in oklab, ${tint} 15%, var(--m-muted, #F4F3EE))`
+          background: color
+            ? `color-mix(in oklab, #${color} 15%, var(--m-muted, #F4F3EE))`
             : "var(--m-muted, #F4F3EE)",
-          color: tint || "var(--m-foreground, #17181C)",
+          color: color ? `#${color}` : "var(--m-foreground, #17181C)",
           fontSize: size * 0.45,
           fontWeight: 600,
           letterSpacing: "-0.02em",
@@ -89,13 +126,14 @@ export function BrandLogo({
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={src}
-      alt={name}
+      src={url}
+      alt={`${name} logo`}
       width={size}
       height={size}
-      className={className}
-      onError={handleError}
-      style={{ display: "block", objectFit: "contain" }}
+      loading="lazy"
+      onError={() => setIdx((i) => Math.min(i + 1, chain.length))}
+      className={`m-logo-tile__icon ${className}`}
+      style={{ width: size, height: size, objectFit: "contain", display: "block" }}
     />
   );
 }
