@@ -20,50 +20,75 @@ export function PageShell({
   className?: string;
 }) {
   return (
-    <div className={`m-flex-col m-min-h-screen ${className}`} style={{ position: "relative" }}>
-      {/* Decorative DNA strands */}
-      <div
+    <div
+      className={className}
+      style={{
+        position: "relative",
+        minHeight: "100vh",
+        overflow: "hidden",
+        background: "var(--m-background)",
+        color: "var(--m-body)",
+      }}
+    >
+      {/* Site-wide DNA strands — extremely subtle, non-interactive */}
+      <DNAStrand
+        className="m-pointer-events-none"
         style={{
           position: "fixed",
+          right: 0,
           top: 0,
-          left: 0,
-          width: 60,
-          height: "100%",
-          pointerEvents: "none",
           zIndex: 0,
+          height: "100vh",
+          width: 280,
+          opacity: 0.07,
+        }}
+      />
+      <DNAStrand
+        variant="diagonal"
+        className="m-pointer-events-none"
+        style={{
+          position: "fixed",
+          left: -64,
+          top: 0,
+          zIndex: 0,
+          height: "100vh",
+          width: 280,
+          opacity: 0.05,
+        }}
+      />
+      <div
+        className="m-pointer-events-none m-lg-only"
+        style={{
+          position: "fixed",
+          left: "50%",
+          top: "38vh",
+          zIndex: 0,
+          transform: "translateX(-50%)",
+          opacity: 0.035,
         }}
         aria-hidden="true"
       >
-        <DNAStrand
-          variant="vertical"
-          tone="light"
-          className=""
-        />
+        <HelixOrbit size={520} />
       </div>
       <div
+        className="m-pointer-events-none m-lg-only"
         style={{
           position: "fixed",
-          top: 0,
-          right: 0,
-          width: 60,
-          height: "100%",
-          pointerEvents: "none",
+          right: "6vw",
+          bottom: "8vh",
           zIndex: 0,
+          opacity: 0.05,
         }}
         aria-hidden="true"
       >
-        <DNAStrand
-          variant="vertical"
-          tone="light"
-          className=""
-        />
+        <HelixOrbit size={260} />
       </div>
 
-      <TopNav />
-      <main style={{ flex: 1, position: "relative", zIndex: 1 }}>
-        {children}
-      </main>
-      <Footer />
+      <div style={{ position: "relative", zIndex: 10 }}>
+        <TopNav />
+        <main>{children}</main>
+        <Footer />
+      </div>
     </div>
   );
 }
@@ -208,93 +233,88 @@ export function ImgFrame({
 }
 
 /* ========================================================================== */
-/*  CtaBand — CTA section with optional atmospheric image background         */
+/*  CtaBand — atmospheric image band + closing CTA with helix orbits         */
 /* ========================================================================== */
 
 export function CtaBand({
   title,
   line,
-  subtitle = "Request a structured pilot. Start in weeks, not months.",
-  cta = "Request a pilot",
-  href = "/pilot/request",
-  img,
+  cta = "Request a pilot →",
+  href = "/pilot",
   className = "",
 }: {
   title?: string;
-  /** @deprecated use `title` */
   line?: string;
-  subtitle?: string;
   cta?: string;
   href?: string;
+  /** @deprecated the band always uses the thread motif */
   img?: string;
+  /** @deprecated */
+  subtitle?: string;
   className?: string;
 }) {
-  // `line` is a legacy alias for `title`
-  title = title ?? line ?? "See helix in action.";
-  if (img) {
-    return (
-      <section className={`m-image-band ${className}`}>
+  const text = line ?? title ?? "Put your company's knowledge to work.";
+  return (
+    <>
+      {/* Atmospheric image band — full-bleed, heavily tinted, quiet */}
+      <section aria-hidden className="m-image-band">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={img} alt="" className="m-image-band__img m-img-tinted" />
+        <img
+          src="/marketing/thread.jpg"
+          alt=""
+          className="m-image-band__img m-img-tinted"
+        />
         <div className="m-image-band__overlay" />
-        <div
-          className="m-image-band-inner"
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-end",
-            gap: 32,
-          }}
-        >
-          <div style={{ position: "relative" }}>
-            <h2 style={{ color: "#E8E8EC" }}>{title}</h2>
-            {subtitle && (
-              <p
-                className="m-mt-3"
-                style={{ fontSize: 16, color: "rgba(232,232,236,0.7)" }}
-              >
-                {subtitle}
-              </p>
-            )}
+        <div className="m-image-band-inner">
+          <div
+            className="m-mono-sm"
+            style={{
+              textTransform: "uppercase",
+              letterSpacing: "0.18em",
+              color: "rgba(237,233,225,0.7)",
+            }}
+          >
+            helix · always on · append-only
           </div>
+        </div>
+      </section>
+
+      <section className={`m-cta-band m-grain ${className}`}>
+        <div
+          className="m-pointer-events-none"
+          style={{ position: "absolute", right: -64, top: -64, opacity: 0.08 }}
+          aria-hidden="true"
+        >
+          <HelixOrbit size={340} />
+        </div>
+        <div
+          className="m-pointer-events-none"
+          style={{ position: "absolute", left: -40, bottom: -64, opacity: 0.06 }}
+          aria-hidden="true"
+        >
+          <HelixOrbit size={220} />
+        </div>
+
+        <div className="m-cta-band-inner">
+          <h3
+            style={{
+              fontSize: 34,
+              fontWeight: 600,
+              color: "var(--m-foreground)",
+              fontFamily: 'var(--font-display, "Fraunces", Georgia, serif)',
+              letterSpacing: "-0.02em",
+              lineHeight: 1.1,
+              maxWidth: 640,
+            }}
+          >
+            {text}
+          </h3>
           <Link href={href} className="m-btn-primary" style={{ flexShrink: 0 }}>
             {cta}
           </Link>
         </div>
       </section>
-    );
-  }
-
-  return (
-    <section className={`m-cta-band ${className}`}>
-      {/* Decorative orbit */}
-      <div
-        style={{
-          position: "absolute",
-          right: -60,
-          top: "50%",
-          transform: "translateY(-50%)",
-          pointerEvents: "none",
-        }}
-        aria-hidden="true"
-      >
-        <HelixOrbit size={320} />
-      </div>
-
-      <div className="m-cta-band-inner">
-        <div style={{ maxWidth: 520 }}>
-          <h2>{title}</h2>
-          {subtitle && (
-            <p className="m-mt-4" style={{ fontSize: 17 }}>
-              {subtitle}
-            </p>
-          )}
-        </div>
-        <Link href={href} className="m-btn-primary">
-          {cta}
-        </Link>
-      </div>
-    </section>
+    </>
   );
 }
 
@@ -305,21 +325,36 @@ export function CtaBand({
 export function ImageBand({
   src,
   alt = "",
+  label,
   children,
   className = "",
 }: {
   src: string;
   alt?: string;
+  label?: string;
   children?: React.ReactNode;
   className?: string;
 }) {
   return (
-    <section className={`m-image-band ${className}`}>
+    <section className={`m-image-band ${className}`} aria-hidden={label ? true : undefined}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={src} alt={alt} className="m-image-band__img m-img-tinted" />
       <div className="m-image-band__overlay" />
       <div className="m-image-band-inner">
-        {children}
+        {label ? (
+          <div
+            className="m-mono-sm"
+            style={{
+              textTransform: "uppercase",
+              letterSpacing: "0.18em",
+              color: "rgba(237,233,225,0.7)",
+            }}
+          >
+            {label}
+          </div>
+        ) : (
+          children
+        )}
       </div>
     </section>
   );
@@ -329,29 +364,53 @@ export function ImageBand({
 /*  Footer                                                                    */
 /* ========================================================================== */
 
-const FOOTER_LINKS = {
-  Product: [
-    { label: "Knowledge", href: "/product/knowledge" },
-    { label: "Skills", href: "/product/skills" },
-    { label: "Governance", href: "/product/governance" },
-    { label: "Memory", href: "/product/memory" },
-    { label: "The Loop", href: "/product/loop" },
-    { label: "Integrations", href: "/product/integrations" },
-  ],
-  Company: [
-    { label: "Security", href: "/security/data-hosting" },
-    { label: "Pilot", href: "/pilot" },
-    { label: "DPA", href: "/dpa" },
-    { label: "Privacy", href: "/privacy" },
-    { label: "Imprint", href: "/imprint" },
-  ],
-};
+function FooterCol({
+  title,
+  links,
+}: {
+  title: string;
+  links: { href: string; label: string }[];
+}) {
+  return (
+    <div>
+      <div
+        className="m-mono-sm"
+        style={{ marginBottom: 16, color: "var(--m-muted-foreground)" }}
+      >
+        {title}
+      </div>
+      <ul
+        style={{
+          listStyle: "none",
+          margin: 0,
+          padding: 0,
+          display: "flex",
+          flexDirection: "column",
+          gap: 10,
+          fontSize: 15,
+          color: "var(--m-body)",
+        }}
+      >
+        {links.map((l) => (
+          <li key={l.href}>
+            <Link
+              href={l.href}
+              className="m-transition-colors m-hover-text-foreground"
+            >
+              {l.label}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 export function Footer({ className = "" }: { className?: string }) {
   return (
-    <footer className={`m-footer ${className}`}>
-      <div style={{ overflow: "hidden" }}>
-        <HelixBand />
+    <footer className={`m-footer ${className}`} style={{ position: "relative" }}>
+      <div style={{ overflow: "hidden", opacity: 0.18 }}>
+        <HelixBand height={44} crossovers={16} />
       </div>
       <div className="m-footer-inner">
         <div className="m-footer-grid">
@@ -361,63 +420,65 @@ export function Footer({ className = "" }: { className?: string }) {
             <p
               className="m-mt-5"
               style={{
-                fontSize: 14,
-                color: "var(--m-muted-foreground)",
-                maxWidth: 320,
+                fontSize: 15,
+                color: "var(--m-body)",
+                maxWidth: 384,
                 lineHeight: 1.6,
               }}
             >
-              The operating DNA of your company. Two strands:
-              what your company knows, and what it does with it.
+              The operating DNA of your company. Two strands: what your company
+              knows, and what it does with it.
             </p>
+            <p
+              className="m-mono-sm m-mt-4"
+              style={{ color: "var(--m-muted-foreground)" }}
+            >
+              built by Hephaistos Systems · Germany · hosted in Frankfurt (EU)
+            </p>
+            <a
+              href="mailto:pilot@helix.ai"
+              className="m-mono m-mt-6 m-hover-text-ember"
+              style={{
+                display: "inline-block",
+                marginTop: 24,
+                color: "var(--m-foreground)",
+              }}
+            >
+              pilot@helix.ai
+            </a>
             <div className="m-mt-6">
               <Rung />
             </div>
           </div>
 
-          {/* Link columns */}
-          {Object.entries(FOOTER_LINKS).map(([heading, links]) => (
-            <div key={heading}>
-              <div className="m-eyebrow" style={{ marginBottom: 16 }}>
-                {heading}
-              </div>
-              <div className="m-flex-col m-gap-2">
-                {links.map((link) => (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className="m-text-sm m-text-muted-foreground m-transition-colors m-hover-text-foreground"
-                    style={{ padding: "4px 0" }}
-                  >
-                    {link.label}
-                  </Link>
-                ))}
-              </div>
-            </div>
-          ))}
+          <FooterCol
+            title="Product"
+            links={[
+              { href: "/product", label: "The product" },
+              { href: "/use-cases", label: "Use cases" },
+              { href: "/industries", label: "Industries" },
+              { href: "/security", label: "Security" },
+              { href: "/pilot", label: "Pilot" },
+            ]}
+          />
+          <FooterCol
+            title="Company"
+            links={[
+              { href: "/imprint", label: "Imprint" },
+              { href: "/privacy", label: "Privacy" },
+              { href: "/dpa", label: "DPA" },
+            ]}
+          />
         </div>
 
         {/* Bottom bar */}
         <div className="m-footer-bottom">
-          <span
-            className="m-mono-sm m-text-muted-foreground"
-          >
-            &copy; {new Date().getFullYear()} helix.ai
+          <span className="m-mono-sm m-text-muted-foreground">
+            &copy; {new Date().getFullYear()} Hephaistos Systems GmbH
           </span>
-          <div className="m-flex m-gap-4">
-            <Link
-              href="/dpa"
-              className="m-mono-sm m-text-muted-foreground m-transition-colors m-hover-text-foreground"
-            >
-              DPA
-            </Link>
-            <Link
-              href="/privacy"
-              className="m-mono-sm m-text-muted-foreground m-transition-colors m-hover-text-foreground"
-            >
-              Privacy
-            </Link>
-          </div>
+          <span className="m-mono-sm m-text-muted-foreground">
+            append-only · nothing was deleted
+          </span>
         </div>
       </div>
     </footer>
